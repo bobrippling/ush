@@ -36,7 +36,7 @@ int term_init()
 		 * ush&
 		 */
 		pgid = getpgrp();
-		while(tcgetpgrp(terminal) != pgid)
+		while(tcgetpgrp(STDIN_FILENO) != pgid)
 			kill(-pgid, SIGTTIN); /* all processes in this job */
 
 		/* interactive and job-control sigs */
@@ -50,15 +50,15 @@ int term_init()
 		/* own process group */
 		pgid = getpid();
 		if(setpgid(pgid, pgid) < 0){
-			perror("setpgid()");
+			perror("setpgid()"); /* might not have job control */
 			return 0;
 		}
 
 		/* set our process group as the term controlling process */
-		tcsetpgrp(terminal, pgid);
+		tcsetpgrp(STDIN_FILENO, pgid);
 
 		/* save term attrs (in case curses app does something) */
-		tcgetattr(terminal, &tmodes);
+		tcgetattr(STDIN_FILENO, &shell_termmode);
 	}
 
 	return 1;
@@ -66,6 +66,6 @@ int term_init()
 
 int term_term()
 {
-	tcsetattr(terminal, TCSANOW, &tmodes);
+	tcsetattr(STDIN_FILENO, TCSANOW, &shell_termmode);
 	return 1;
 }

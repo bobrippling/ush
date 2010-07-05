@@ -1,11 +1,13 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <setjmp.h>
 
 #include "term.h"
 #include "read.h"
 
 char interactive;
+jmp_buf allocerr;
 
 static void usage(const char *);
 
@@ -25,6 +27,11 @@ int main(int argc, char **argv)
 
 	interactive = isatty(STDIN_FILENO);
 
+	if(setjmp(allocerr)){
+		perror("malloc()");
+		return 1;
+	}
+
 	for(i = 1; i < argc; i++)
 		if(!strcmp(argv[i], "-i"))
 			interactive = 1;
@@ -42,9 +49,9 @@ int main(int argc, char **argv)
 	if(!term_init())
 		return 1;
 
-	readloop();
+	i = readloop();
 
 	term_term();
 
-	return 0;
+	return i;
 }
