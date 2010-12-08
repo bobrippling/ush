@@ -1,71 +1,36 @@
-#define _POSIX_SOURCE
-
-#include <stdio.h>
-#include <termios.h>
 #include <unistd.h>
-#include <sys/types.h>
-#include <signal.h>
+#include <termios.h>
+#include <stdio.h>
 
 #include "term.h"
 
-/*
- * process group = job
- *
- *
- *                    / cat hi
- *             job1  <
- *           /        \ grep tim
- *          /
- * session <
- *          \
- *           \        / find . -iname hi
- *             job2  <
- *                    \ xargs rm
- *
- */
+struct termios attr_orig;
 
-pid_t pgid;
-struct termios shell_termmode;
-extern char interactive;
 
-int term_init()
+int term_init(void)
 {
-	if(interactive){
-		/*
-		 * wait until foreground'd (in case invoked from another shell, like
-		 * ush&
-		 */
-		pgid = getpgrp();
-		while(tcgetpgrp(STDIN_FILENO) != pgid)
-			kill(-pgid, SIGTTIN); /* all processes in this job */
-
-		/* interactive and job-control sigs */
-		signal(SIGINT , SIG_IGN);
-		signal(SIGQUIT, SIG_IGN);
-		signal(SIGTSTP, SIG_IGN);
-		signal(SIGTTIN, SIG_IGN);
-		signal(SIGTTOU, SIG_IGN);
-		signal(SIGCHLD, SIG_IGN);
-
-		/* own process group */
-		pgid = getpid();
-		if(setpgid(pgid, pgid) < 0){
-			perror("setpgid()"); /* might not have job control */
-			return 0;
-		}
-
-		/* set our process group as the term controlling process */
-		tcsetpgrp(STDIN_FILENO, pgid);
-
-		/* save term attrs (in case curses app does something) */
-		tcgetattr(STDIN_FILENO, &shell_termmode);
+	if(tcgetattr(STDIN_FILENO, &attr_orig)){
+		perror("tcgetattr()");
+		return 1;
 	}
-
-	return 1;
+	return 0;
 }
 
-int term_term()
+int term_term(void)
 {
-	tcsetattr(STDIN_FILENO, TCSANOW, &shell_termmode);
-	return 1;
+	if(tcsetattr(STDIN_FILENO, TCSAFLUSH, &attr_orig)){
+		perror("tcsetattr()");
+		return 1;
+	}
+	return 0;
+
+}
+
+int term_fg_proc(pid_t pid)
+{
+	/*
+	 * http://www.gnu.org/s/libc/manual/html_node/Implementing-a-Shell.html#Implementing-a-Shell
+	 */
+
+	return 0;
 }
