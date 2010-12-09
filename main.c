@@ -20,10 +20,13 @@ int lewp()
 
 	do{
 		struct job *j;
+		int eof;
 
-		argvp = ureadline();
-		if(!argvp)
+		argvp = ureadline(&eof);
+		if(eof)
 			break;
+		else if(!argvp)
+			continue;
 
 		j = job_new(ustrdup_argvp(argvp), argvp);
 		j->next = jobs;
