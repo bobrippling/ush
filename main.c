@@ -2,6 +2,7 @@
 #include <setjmp.h>
 #include <string.h>
 #include <sys/wait.h>
+#include <errno.h>
 
 #include "util.h"
 #include "job.h"
@@ -15,38 +16,28 @@ struct job *jobs = NULL;
 
 int lewp()
 {
-	char **argvp[] = { NULL, NULL };
+	char ***argvp;
 
 	do{
 		struct job *j;
-		char **argv = ureadline();
 
-		if(!argv)
+		argvp = ureadline();
+		if(!argvp)
 			break;
 
-		argvp[0] = argv;
-
-		j = job_new(ustrdup_argv(argv), argvp);
+		j = job_new(ustrdup_argvp(argvp), argvp);
 		j->next = jobs;
 		jobs = j;
 
 		if(job_start(j))
 			perror("job_start()");
 			/* FIXME: cleanup */
-		else if(job_wait_all(j))
+		else if(job_wait_all(j) && errno != ECHILD)
 			perror("job_wait_all()");
 			/* FIXME: cleanup */
 	}while(1);
 
 	return 0;
-}
-
-void sigh(int sig)
-{
-	switch(sig){
-		case SIGCHLD:
-			;
-	}
 }
 
 int main(int argc, const char **argv)
@@ -60,8 +51,6 @@ int main(int argc, const char **argv)
 
 	(void)argc;
 	(void)argv;
-
-	signal(SIGCHLD, sigh);
 
 	term_init();
 	ret = lewp();

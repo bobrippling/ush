@@ -2,6 +2,9 @@
 #include <setjmp.h>
 #include <string.h>
 
+/* FIXME */
+#include <stdio.h>
+
 extern jmp_buf allocerr;
 
 void *umalloc(size_t size)
@@ -19,21 +22,25 @@ char *ustrdup(const char *s)
 	return d;
 }
 
-char *ustrdup_argv(char **argv)
+char *ustrdup_argvp(char ***argvp)
 {
-	char **iter, *ret;
-	int len;
+	char ***piter, **iter, *ret;
+	int len = 1;
 
-	for(len = 1, iter = argv; *iter; iter++)
-		len += strlen(*iter) + 1;
+	for(piter = argvp; *piter; piter++)
+		for(iter = *piter; *iter; iter++){
+			fprintf(stderr, "iter: %s\n", *iter);
+			len += strlen(*iter) + 1;
+		}
 
 	ret = umalloc(len);
 	*ret = '\0';
 
-	for(iter = argv; *iter; iter++){
-		strcat(ret, *iter);
-		strcat(ret, " ");
-	}
+	for(piter = argvp; *piter; piter++)
+		for(iter = *piter; *iter; iter++){
+			strcat(ret, *iter);
+			strcat(ret, " ");
+		}
 
 	return ret;
 }

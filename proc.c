@@ -7,6 +7,8 @@
 #include "util.h"
 #include "proc.h"
 
+#define EXEC_FUNC execvp
+
 struct proc *proc_new(char **argv)
 {
 	struct proc *p = umalloc(sizeof *p);
@@ -23,6 +25,11 @@ struct proc *proc_new(char **argv)
 int proc_spawn(struct proc *p, int pgid)
 {
 	pid_t pid;
+
+	if(pgid == 0)
+		pgid = getpid();
+	tcsetpgrp(STDIN_FILENO, pgid);
+
 	switch(pid = fork()){
 		case -1:
 			perror("fork()");
@@ -30,16 +37,13 @@ int proc_spawn(struct proc *p, int pgid)
 
 		case 0:
 			/* signals back in business */
-			signal(SIGINT , SIG_DFL);
+			signal(SIGINT,  SIG_DFL);
 			signal(SIGQUIT, SIG_DFL);
 			signal(SIGTSTP, SIG_DFL);
 			signal(SIGTTIN, SIG_DFL);
 			signal(SIGTTOU, SIG_DFL);
 			signal(SIGCHLD, SIG_DFL);
-			if(setpgid(0, pgid)){
-				perror("setpgid()");
-				_exit(1);
-			}
+			setpgid(getpid(), pgid);
 #define REDIR(a, b) \
 		do{ \
 			/* copy a into b */ \
@@ -52,7 +56,7 @@ int proc_spawn(struct proc *p, int pgid)
 			REDIR(p->out, STDOUT_FILENO);
 			REDIR(p->err, STDERR_FILENO);
 #undef REDIR
-			execv(*p->argv, p->argv);
+			EXEC_FUNC(*p->argv, p->argv);
 			perror("execv()");
 			_exit(-1);
 			return 1;

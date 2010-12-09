@@ -3,6 +3,6 @@
 
 void *umalloc(size_t);
 char *ustrdup(const char *s);
-char *ustrdup_argv(char **argv);
+char *ustrdup_argvp(char ***argvp);
 
 #endif

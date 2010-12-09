@@ -39,7 +39,7 @@ int job_start(struct job *j)
 {
 	struct proc *p;
 	int pipey[2];
-	int pgid = 0;
+	int pgid, orig_pgid = getpgid(STDIN_FILENO);
 
 	j->proc->in = STDIN_FILENO;
 	for(p = j->proc; p; p = p->next){
@@ -56,10 +56,16 @@ int job_start(struct job *j)
 
 		if(proc_spawn(p, pgid))
 			goto bail;
-		if(p == j->proc)
+		/* p->pid set by proc_spawn */
+
+		if(p == j->proc){
+			/* first */
 			pgid = p->pid; /* p is group leader */
+			setpgid(p->pid, pgid);
+		}
 	}
 
+	tcsetpgrp(STDIN_FILENO, orig_pgid); /* move us back into the term */
 	return 0;
 bail:
 	for(; p; p = p->next)
@@ -79,11 +85,18 @@ int job_wait_all(struct job *j)
 int job_wait(struct job *j)
 {
 	int exit_status, proc_still_running = 0;
-	pid_t pid;
+	pid_t pid, orig_pgid = getpgid(STDIN_FILENO);
 	struct proc *p;
+	int save;
+
+	tcsetpgrp(STDIN_FILENO, j->gid);
 
 rewait:
-	pid = waitpid(-1, &exit_status, 0); /* WNOHANG for async */
+	pid = waitpid(j->gid, &exit_status, 0); /* WNOHANG for async */
+
+	save = errno;
+	tcsetpgrp(STDIN_FILENO, orig_pgid);
+	errno = save;
 
 	if(pid == -1){
 		if(errno == EINTR)
