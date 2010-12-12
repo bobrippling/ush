@@ -1,0 +1,4 @@
+readline: tab completion
+parse:    $varname, *, etc
+
+job background stuff

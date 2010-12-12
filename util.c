@@ -2,8 +2,7 @@
 #include <setjmp.h>
 #include <string.h>
 
-/* FIXME */
-#include <stdio.h>
+#include "config.h"
 
 extern jmp_buf allocerr;
 

@@ -3,11 +3,19 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <string.h>
+#include <signal.h>
 
 #include "util.h"
 #include "proc.h"
+#include "config.h"
 
 #define EXEC_FUNC execvp
+
+#ifdef USH_DEBUG
+# define  PROC_DEBUG
+#else
+# undef  PROC_DEBUG
+#endif
 
 struct proc *proc_new(char **argv)
 {
@@ -22,28 +30,21 @@ struct proc *proc_new(char **argv)
 	return p;
 }
 
-int proc_spawn(struct proc *p, int pgid)
+int proc_exec(struct proc *p, int pgid)
 {
-	pid_t pid;
-
+	/* signals back in business */
 	if(pgid == 0)
 		pgid = getpid();
+
+	setpgid(getpid(), pgid);
 	tcsetpgrp(STDIN_FILENO, pgid);
 
-	switch(pid = fork()){
-		case -1:
-			perror("fork()");
-			return 1;
-
-		case 0:
-			/* signals back in business */
-			signal(SIGINT,  SIG_DFL);
-			signal(SIGQUIT, SIG_DFL);
-			signal(SIGTSTP, SIG_DFL);
-			signal(SIGTTIN, SIG_DFL);
-			signal(SIGTTOU, SIG_DFL);
-			signal(SIGCHLD, SIG_DFL);
-			setpgid(getpid(), pgid);
+	signal(SIGINT,  SIG_DFL);
+	signal(SIGQUIT, SIG_DFL);
+	signal(SIGTSTP, SIG_DFL);
+	signal(SIGTTIN, SIG_DFL);
+	signal(SIGTTOU, SIG_DFL);
+	signal(SIGCHLD, SIG_DFL);
 #define REDIR(a, b) \
 		do{ \
 			/* copy a into b */ \
@@ -52,20 +53,15 @@ int proc_spawn(struct proc *p, int pgid)
 			if(a != b && close(a) == -1) \
 				perror("close()"); \
 		}while(0)
-			REDIR(p->in,  STDIN_FILENO );
-			REDIR(p->out, STDOUT_FILENO);
-			REDIR(p->err, STDERR_FILENO);
+	REDIR(p->in,   STDIN_FILENO);
+	REDIR(p->out, STDOUT_FILENO);
+	REDIR(p->err, STDERR_FILENO);
 #undef REDIR
-			EXEC_FUNC(*p->argv, p->argv);
-			perror("execv()");
-			_exit(-1);
-			return 1;
 
-		default:
-			p->pid = pid;
-			printf("proc_spawn: p->pid: %d\n", p->pid);
-			return 0;
-	}
+	EXEC_FUNC(*p->argv, p->argv);
+	perror("execv()");
+	_exit(-1);
+	return 1;
 }
 
 void proc_free(struct proc *p)

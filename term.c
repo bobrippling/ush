@@ -4,6 +4,13 @@
 #include <signal.h>
 
 #include "term.h"
+#include "config.h"
+
+#ifdef USH_DEBUG
+# define TERM_DEBUG
+#else
+# undef TERM_DEBUG
+#endif
 
 struct termios attr_orig;
 
@@ -11,6 +18,10 @@ struct termios attr_orig;
 int term_init(void)
 {
 	int pgid = getpgrp();
+
+#ifdef TERM_DEBUG
+	fprintf(stderr, "tcgetattr(stdin, ...)\n");
+#endif
 
 	if(tcgetattr(STDIN_FILENO, &attr_orig)){
 		perror("tcgetattr()");
@@ -42,6 +53,10 @@ int term_init(void)
 
 int term_term(void)
 {
+#ifdef TERM_DEBUG
+	fprintf(stderr, "tcsetattr(stdin, TCSAFLUSH, ...)\n");
+#endif
+
 	if(tcsetattr(STDIN_FILENO, TCSAFLUSH, &attr_orig)){
 		perror("tcsetattr()");
 		return 1;

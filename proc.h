@@ -13,7 +13,7 @@ struct proc
 };
 
 struct proc *proc_new(char **argv);
-int          proc_spawn(struct proc *, int pgid);
-void         proc_free( struct proc *);
+int          proc_exec(struct proc *, int pgid);
+void         proc_free(struct proc *);
 
 #endif

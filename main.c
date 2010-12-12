@@ -9,6 +9,7 @@
 #include "proc.h"
 #include "readline.h"
 #include "term.h"
+#include "config.h"
 
 jmp_buf allocerr;
 

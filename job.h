@@ -20,4 +20,8 @@ int         job_wait_all(struct job *);
 
 void        job_free(    struct job *);
 
+int job_sig( struct job *, int sig);
+int job_stop(struct job *);
+int job_cont(struct job *);
+
 #endif

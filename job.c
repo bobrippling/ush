@@ -8,12 +8,13 @@
 #include "util.h"
 #include "proc.h"
 #include "job.h"
+#include "config.h"
 
-#if 0
-static void job_spawn( struct job *j);
-static void job_remove(struct job *j);
+#ifdef USH_DEBUG
+# define JOB_DEBUG
+#else
+# undef JOB_DEBUG
 #endif
-
 
 /** create a struct proc for each argv */
 struct job *job_new(char *cmd, char ***argvp)
@@ -40,7 +41,6 @@ int job_start(struct job *j)
 {
 	struct proc *p;
 	int pipey[2];
-	int orig_pgid = getpgid(STDIN_FILENO);
 
 	j->proc->in = STDIN_FILENO;
 	for(p = j->proc; p; p = p->next){
@@ -55,27 +55,51 @@ int job_start(struct job *j)
 		}else
 			p->out = STDOUT_FILENO;
 
-		if(proc_spawn(p, j->gid))
-			goto bail;
-		/* p->pid set by proc_spawn */
+		switch(p->pid = fork()){
+			case 0:
+				proc_exec(p, j->gid);
+				break; /* unreachable */
 
-		if(p == j->proc){
-			/* first */
-			j->gid = p->pid; /* p is group leader */
-			setpgid(p->pid, j->gid);
+			case -1:
+				perror("fork()");
+				goto bail;
 
-			printf("job_start: j->gid: %d\n", j->gid);
+			default:
+				if(!j->gid)
+					j->gid = p->pid;
+				setpgid(p->pid, j->gid);
 		}
 	}
 
-	tcsetpgrp(STDIN_FILENO, orig_pgid); /* move us back into the term */
 	return 0;
 bail:
 	for(; p; p = p->next)
 		p->state = FIN;
+	job_cont(j);
 	return 1;
 }
 
+int job_sig(struct job *j, int sig)
+{
+	struct proc *p;
+	int ret = 0;
+
+	for(p = j->proc; p; p = p->next)
+		if(kill(p->pid, sig))
+			ret = 1;
+
+	return ret;
+}
+
+int job_stop(struct job *j)
+{
+	return job_sig(j, SIGSTOP);
+}
+
+int job_cont(struct job *j)
+{
+	return job_sig(j, SIGCONT);
+}
 
 int job_wait_all(struct job *j)
 {
@@ -93,8 +117,11 @@ int job_wait(struct job *j)
 	int save;
 
 rewait:
-	tcsetpgrp(STDIN_FILENO, j->gid);
 	pid = waitpid(-j->gid, &exit_status, 0); /* WNOHANG for async */
+
+#ifdef USH_DEBUG
+	fprintf(stderr, "%d\n", pid);
+#endif
 
 	save = errno;
 	tcsetpgrp(STDIN_FILENO, orig_pgid);
@@ -103,6 +130,7 @@ rewait:
 	if(pid == -1){
 		if(errno == EINTR)
 			goto rewait;
+		perror("waitpid()");
 		return 1;
 	}
 

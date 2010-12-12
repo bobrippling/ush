@@ -4,6 +4,7 @@
 #include "readline.h"
 #include "parse.h"
 #include "util.h"
+#include "config.h"
 
 #define BSIZ 256
 
@@ -38,7 +39,10 @@ static char *prompt_and_line()
 	fputs("% ", stdout);
 
 	if(!fgets(buffer, BSIZ, stdin)){
-		puts("exit");
+		if(ferror(stdin))
+			perror("read()");
+		else
+			puts("exit");
 		return NULL;
 	}
 	return buffer;

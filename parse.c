@@ -4,6 +4,7 @@
 
 #include "parse.h"
 #include "util.h"
+#include "config.h"
 
 enum token
 {
