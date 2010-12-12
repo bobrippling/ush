@@ -15,6 +15,14 @@ void *umalloc(size_t size)
 	return p;
 }
 
+void *urealloc(void *orig, size_t size)
+{
+	void *p = realloc(orig, size);
+	if(!p)
+		longjmp(allocerr, 1);
+	return p;
+}
+
 char *ustrdup(const char *s)
 {
 	char *d = umalloc(strlen(s) + 1);
@@ -28,10 +36,8 @@ char *ustrdup_argvp(char ***argvp)
 	int len = 1;
 
 	for(piter = argvp; *piter; piter++)
-		for(iter = *piter; *iter; iter++){
-			fprintf(stderr, "iter: %s\n", *iter);
+		for(iter = *piter; *iter; iter++)
 			len += strlen(*iter) + 1;
-		}
 
 	ret = umalloc(len);
 	*ret = '\0';
@@ -43,4 +49,16 @@ char *ustrdup_argvp(char ***argvp)
 		}
 
 	return ret;
+}
+
+void ufree_argvp(char ***argvp)
+{
+	char ***orig = argvp;
+	for(; *argvp; argvp++){
+		char **argv;
+		for(argv = *argvp; *argv; argv++)
+			free(*argv);
+		free(*argvp);
+	}
+	free(orig);
 }

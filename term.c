@@ -27,7 +27,7 @@ int term_init(void)
 	signal(SIGTSTP, SIG_IGN);
 	signal(SIGTTIN, SIG_IGN);
 	signal(SIGTTOU, SIG_IGN);
-	signal(SIGCHLD, SIG_IGN);
+	/*signal(SIGCHLD, SIG_IGN);*/
 
 	/* Put ourselves in our own process group.  */
 	if(setpgid(getpid(), pgid) < 0){
@@ -55,6 +55,7 @@ int term_fg_proc(pid_t pid)
 	/*
 	 * http://www.gnu.org/s/libc/manual/html_node/Implementing-a-Shell.html#Implementing-a-Shell
 	 */
+	(void)pid;
 
 	return 0;
 }

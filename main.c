@@ -14,6 +14,23 @@ jmp_buf allocerr;
 
 struct job *jobs = NULL;
 
+void rm_job(struct job *j)
+{
+	if(j == jobs){
+		jobs = j->next;
+		job_free(j);
+	}else{
+		struct job *prev;
+
+		for(prev = jobs; prev->next; prev = prev->next)
+			if(j == prev->next){
+				prev->next = j->next;
+				job_free(j);
+				break;
+			}
+	}
+}
+
 int lewp()
 {
 	char ***argvp;
@@ -38,6 +55,8 @@ int lewp()
 		else if(job_wait_all(j) && errno != ECHILD)
 			perror("job_wait_all()");
 			/* FIXME: cleanup */
+
+		rm_job(j);
 	}while(1);
 
 	return 0;

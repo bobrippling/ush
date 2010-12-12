@@ -3,11 +3,13 @@
 #include <ctype.h>
 
 #include "parse.h"
+#include "util.h"
 
 enum token
 {
 	TOKEN_STRING,
-	TOKEN_PIPE
+	TOKEN_PIPE,
+	TOKEN_EOL
 } current_token;
 
 char *buffer;
@@ -20,10 +22,14 @@ int nexttoken()
 			current_token = TOKEN_PIPE;
 			break;
 
+		case '\0':
+			current_token = TOKEN_EOL;
+			break;
+
 		default:
 			current_token = TOKEN_STRING;
 			current_string = buffer - 1;
-			while(!isspace(*buffer))
+			while(*buffer && !isspace(*buffer))
 				buffer++;
 			*buffer++ = '\0';
 	}
@@ -62,36 +68,44 @@ char ***parse(char *in)
 
 	return argvp;
 #else
-	char ***argvp = umalloc(2 * sizeof(char **));
-	char **argv;
-	int i = 0;
+	char ***argvp = umalloc(2 * sizeof(*argvp));
+	char  **argv;
+	int argvp_idx = 0;
 
 	buffer = in;
-
-	argvp[1] = NULL; /* FIXME: vector<char *> */
-	argv = argvp[0] = umalloc(2 * sizeof(char *));
 
 	if(token_init())
 		return NULL;
 
 	do{
+		argv = argvp[argvp_idx] = umalloc(2 * sizeof(*argv));
+
 		if(current_token == TOKEN_STRING){
 			/* program */
+			int argv_idx = 1;
 
-			argvp[i] = current_string;
+			argv[0] = current_string;
 
 			nexttoken();
-			for(; current_token == TOKEN_STRING; nexttoken())
-				list_add(current_string);
+			for(; current_token == TOKEN_STRING; nexttoken()){
+				argvp[argvp_idx] = argv = urealloc(argv, (argv_idx + 2) * sizeof(*argv));
+				argv[argv_idx++] = ustrdup(current_string);
+				argv[argv_idx  ] = NULL;
+			}
 
-			/* assert(current_token == TOKEN_PIPE); */
-			etc();
+			if(current_token == TOKEN_EOL){
+				break;
+			}else if(current_token == TOKEN_PIPE){
+				argvp = urealloc(argvp, (argvp_idx + 2) * sizeof(*argvp));
+				argvp_idx++;
+			}
 		}else{
 			fputs("expected: program to run\n", stderr);
 			return NULL;
 		}
 	}while(1);
 
-
+	argvp[argvp_idx + 1] = NULL;
+	return argvp;
 #endif
 }

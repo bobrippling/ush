@@ -63,14 +63,12 @@ int proc_spawn(struct proc *p, int pgid)
 
 		default:
 			p->pid = pid;
+			printf("proc_spawn: p->pid: %d\n", p->pid);
 			return 0;
 	}
 }
 
 void proc_free(struct proc *p)
 {
-	char **argv;
-	for(argv = p->argv; *argv; argv++)
-		free(*argv);
 	free(p);
 }

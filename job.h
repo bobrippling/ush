@@ -3,6 +3,7 @@
 
 struct job
 {
+	char ***argvp;
 	char *cmd;
 	int gid;
 	int complete;
@@ -16,5 +17,7 @@ struct job *job_new(char *cmd, char ***argvp);
 int         job_start(   struct job *);
 int         job_wait(    struct job *);
 int         job_wait_all(struct job *);
+
+void        job_free(    struct job *);
 
 #endif
