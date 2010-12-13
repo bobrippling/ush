@@ -40,7 +40,7 @@ struct job *job_new(char *cmd, char ***argvp)
 void job_close_fds(struct job *j)
 {
 	struct proc *p;
-#define CLOSE(n) do{ fprintf(stderr, "ush: CLOSE(%d)\n", n); close(n); }while(0)
+#define CLOSE(n) do{ fprintf(stderr, "ush: %d: close(%d)\n", getpid(), n); close(n); }while(0)
 	for(p = j->proc; p; p = p->next){
 		if(p->in != STDIN_FILENO)
 			CLOSE(p->in);
@@ -49,23 +49,24 @@ void job_close_fds(struct job *j)
 		if(p->err != STDERR_FILENO)
 			CLOSE(p->err);
 	}
-#undef CLOSE
 }
 
 int job_start(struct job *j)
 {
 	struct proc *p;
-	int pipey[2];
+	int pipey[2] = { -1, -1 };
 
 	j->proc->in = STDIN_FILENO;
 	for(p = j->proc; p; p = p->next){
 		p->err = STDERR_FILENO;
 		if(p->next){
+			/*CLOSE(pipey[0]);
+			CLOSE(pipey[1]);*/
 			if(pipe(pipey) < 0){
 				perror("pipe()");
-				return 1;
+				goto bail;
 			}
-			fprintf(stderr, "ush: pipe: [%d, %d]\n", pipey[0], pipey[1]);
+			fprintf(stderr, "ush: %d: pipe: [%d, %d]\n", getpid(), pipey[0], pipey[1]);
 			p->out = pipey[1];
 			p->next->in = pipey[0];
 		}else
@@ -73,6 +74,8 @@ int job_start(struct job *j)
 
 		switch(p->pid = fork()){
 			case 0:
+				CLOSE(pipey[0]); /* FIXME for more than 2 processes in a pipe */
+				CLOSE(pipey[1]);
 				proc_exec(p, j->gid);
 				break; /* unreachable */
 

@@ -51,8 +51,12 @@ int proc_exec(struct proc *p, int pgid)
 			/* close b and copy a into b */ \
 			if(dup2(a, b) == -1) \
 				perror("dup2()"); \
-			if(a != b && close(a) == -1) \
-				perror("close()"); \
+			if(a != b){ \
+				if(close(a) == -1) \
+					perror("close()"); \
+				else \
+					fprintf(stderr, "ush: %d: child: close(%d)\n", getpid(), a); \
+			} \
 		}while(0)
 	REDIR(p->in,   STDIN_FILENO);
 	REDIR(p->out, STDOUT_FILENO);
