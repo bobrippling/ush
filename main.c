@@ -11,6 +11,8 @@
 #include "term.h"
 #include "config.h"
 
+#undef ARGV_PRINT
+
 jmp_buf allocerr;
 
 struct job *jobs = NULL;
@@ -46,6 +48,15 @@ int lewp()
 		else if(!argvp)
 			continue;
 
+#ifdef ARGV_PRINT
+		{
+			int i, j;
+			for(i = 0; argvp[i]; i++)
+				for(j = 0; argvp[i][j]; j++)
+					printf("argvp[%d][%d]: \"%s\"\n", i, j, argvp[i][j]);
+			ufree_argvp(argvp);
+		}
+#else
 		j = job_new(ustrdup_argvp(argvp), argvp);
 		j->next = jobs;
 		jobs = j;
@@ -58,6 +69,7 @@ int lewp()
 			/* FIXME: cleanup */
 
 		rm_job(j);
+#endif
 	}while(1);
 
 	return 0;

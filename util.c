@@ -29,6 +29,20 @@ char *ustrdup(const char *s)
 	return d;
 }
 
+char *ustrndup(const char *s, size_t n)
+{
+	size_t len = strlen(s) + 1;
+	char *p;
+
+	if(len > n)
+		len = n;
+
+	p = umalloc(len);
+	strncpy(p, s, len - 1);
+	p[len-1] = '\0';
+	return p;
+}
+
 char *ustrdup_argvp(char ***argvp)
 {
 	char ***piter, **iter, *ret;

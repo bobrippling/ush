@@ -37,6 +37,21 @@ struct job *job_new(char *cmd, char ***argvp)
 	return j;
 }
 
+void job_close_fds(struct job *j)
+{
+	struct proc *p;
+#define CLOSE(n) do{ fprintf(stderr, "ush: CLOSE(%d)\n", n); close(n); }while(0)
+	for(p = j->proc; p; p = p->next){
+		if(p->in != STDIN_FILENO)
+			CLOSE(p->in);
+		if(p->out != STDOUT_FILENO)
+			CLOSE(p->out);
+		if(p->err != STDERR_FILENO)
+			CLOSE(p->err);
+	}
+#undef CLOSE
+}
+
 int job_start(struct job *j)
 {
 	struct proc *p;
@@ -50,6 +65,7 @@ int job_start(struct job *j)
 				perror("pipe()");
 				return 1;
 			}
+			fprintf(stderr, "ush: pipe: [%d, %d]\n", pipey[0], pipey[1]);
 			p->out = pipey[1];
 			p->next->in = pipey[0];
 		}else
@@ -71,10 +87,14 @@ int job_start(struct job *j)
 		}
 	}
 
+	/* close our access to all these pipes */
+	job_close_fds(j);
+
 	return 0;
 bail:
 	for(; p; p = p->next)
 		p->state = FIN;
+	job_close_fds(j);
 	job_cont(j);
 	return 1;
 }
@@ -112,20 +132,27 @@ int job_wait_all(struct job *j)
 int job_wait(struct job *j)
 {
 	int exit_status, proc_still_running = 0;
-	pid_t pid, orig_pgid = getpgid(STDIN_FILENO);
 	struct proc *p;
+	pid_t pid;
+#define JOB_WAIT_CHANGE_GROUP
+#ifdef JOB_WAIT_CHANGE_GROUP
+	const pid_t orig_pgid = getpgid(STDIN_FILENO);
 	int save;
-
-rewait:
-	pid = waitpid(-j->gid, &exit_status, 0); /* WNOHANG for async */
-
-#ifdef USH_DEBUG
-	fprintf(stderr, "%d\n", pid);
 #endif
 
+rewait:
+#ifdef JOB_WAIT_CHANGE_GROUP
+	tcsetpgrp(STDIN_FILENO, j->gid);
+	/*setpgid(getpid(), j->gid);*/
+#endif
+	pid = waitpid(-j->gid, &exit_status, 0); /* WNOHANG for async */
+
+#ifdef JOB_WAIT_CHANGE_GROUP
 	save = errno;
 	tcsetpgrp(STDIN_FILENO, orig_pgid);
+	/*setpgid(getpid(), orig_pgid);*/
 	errno = save;
+#endif
 
 	if(pid == -1){
 		if(errno == EINTR)

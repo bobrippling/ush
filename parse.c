@@ -1,48 +1,97 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <stdlib.h>
 
 #include "parse.h"
 #include "util.h"
 #include "config.h"
 
+#define GET_CURRENT_STRING(v) do{ v = current_string; current_string = NULL; }while(0)
+
 enum token
 {
 	TOKEN_STRING,
 	TOKEN_PIPE,
-	TOKEN_EOL
+	TOKEN_EOL,
+	TOKEN_UNKNOWN
 } current_token;
 
-char *buffer;
-char *current_string;
+char *buffer = NULL;
+char *current_string = NULL;
 
-int nexttoken()
+const char *token_to_string(enum token t)
 {
-	switch(*buffer++){
+	switch(t){
+		case TOKEN_STRING:  return "STRING";
+		case TOKEN_PIPE:    return "PIPE";
+		case TOKEN_EOL:     return "EOL";
+		case TOKEN_UNKNOWN: return "UNKNOWN";
+	}
+	return "?";
+}
+
+int iswordchar(char c)
+{
+	return c && !isspace(c) && c != '|';
+}
+
+char nextchar()
+{
+	while(*buffer && isspace(*buffer))
+		buffer++;
+
+	if(*buffer)
+		return *buffer++;
+	else
+		return 0;
+}
+
+char peeknextchar()
+{
+	return *buffer;
+}
+
+void nexttoken()
+{
+	char c = nextchar();
+
+	switch(c){
 		case '|':
 			current_token = TOKEN_PIPE;
-			break;
+			return;
 
 		case '\0':
 			current_token = TOKEN_EOL;
-			break;
-
-		default:
-			current_token = TOKEN_STRING;
-			current_string = buffer - 1;
-			while(*buffer && !isspace(*buffer))
-				buffer++;
-			*buffer++ = '\0';
+			return;
 	}
-	return 0;
+
+	if(iswordchar(c)){
+		int len = 2; /* 1 for the initial char, 1 for \0 */
+		char *start = buffer - 1;
+
+		do{
+			c = peeknextchar();
+			if(iswordchar(c)){
+				nextchar();
+				len++;
+			}else
+				break;
+		}while(1);
+
+		free(current_string);
+		current_string = ustrndup(start, len);
+		current_token = TOKEN_STRING;
+	}else{
+		fprintf(stderr, "unknown character: %c\n", c);
+		current_token = TOKEN_UNKNOWN;
+	}
 }
 
 int token_init()
 {
-	while(isspace(*buffer))
-		buffer++;
-
-	return nexttoken();
+	nexttoken();
+	return 0;
 }
 
 char ***parse(char *in)
@@ -85,23 +134,27 @@ char ***parse(char *in)
 			/* program */
 			int argv_idx = 1;
 
-			argv[0] = current_string;
+			GET_CURRENT_STRING(argv[0]);
 
 			nexttoken();
 			for(; current_token == TOKEN_STRING; nexttoken()){
 				argvp[argvp_idx] = argv = urealloc(argv, (argv_idx + 2) * sizeof(*argv));
-				argv[argv_idx++] = ustrdup(current_string);
+				GET_CURRENT_STRING(argv[argv_idx++]);
 				argv[argv_idx  ] = NULL;
 			}
 
 			if(current_token == TOKEN_EOL){
 				break;
 			}else if(current_token == TOKEN_PIPE){
-				argvp = urealloc(argvp, (argvp_idx + 2) * sizeof(*argvp));
+				nexttoken();
 				argvp_idx++;
-			}
+				argvp = urealloc(argvp, (argvp_idx + 2) * sizeof(*argvp));
+			}else
+				goto unexpected;
 		}else{
-			fputs("expected: program to run\n", stderr);
+unexpected:
+			/* FIXME: free */
+			fprintf(stderr, "unexpected token: %s\n", token_to_string(current_token));
 			return NULL;
 		}
 	}while(1);

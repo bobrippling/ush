@@ -4,6 +4,7 @@
 #include <sys/wait.h>
 #include <string.h>
 #include <signal.h>
+#include <errno.h>
 
 #include "util.h"
 #include "proc.h"
@@ -47,7 +48,7 @@ int proc_exec(struct proc *p, int pgid)
 	signal(SIGCHLD, SIG_DFL);
 #define REDIR(a, b) \
 		do{ \
-			/* copy a into b */ \
+			/* close b and copy a into b */ \
 			if(dup2(a, b) == -1) \
 				perror("dup2()"); \
 			if(a != b && close(a) == -1) \
@@ -59,7 +60,7 @@ int proc_exec(struct proc *p, int pgid)
 #undef REDIR
 
 	EXEC_FUNC(*p->argv, p->argv);
-	perror("execv()");
+	fprintf(stderr, "execv(): %s: %s\n", *p->argv, strerror(errno));
 	_exit(-1);
 	return 1;
 }
