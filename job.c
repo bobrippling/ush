@@ -40,14 +40,13 @@ struct job *job_new(char *cmd, char ***argvp)
 void job_close_fds(struct job *j)
 {
 	struct proc *p;
-#define CLOSE(n) do{ fprintf(stderr, "ush: %d: close(%d)\n", getpid(), n); close(n); }while(0)
 	for(p = j->proc; p; p = p->next){
 		if(p->in != STDIN_FILENO)
-			CLOSE(p->in);
+			close(p->in);
 		if(p->out != STDOUT_FILENO)
-			CLOSE(p->out);
+			close(p->out);
 		if(p->err != STDERR_FILENO)
-			CLOSE(p->err);
+			close(p->err);
 	}
 }
 
@@ -60,13 +59,10 @@ int job_start(struct job *j)
 	for(p = j->proc; p; p = p->next){
 		p->err = STDERR_FILENO;
 		if(p->next){
-			/*CLOSE(pipey[0]);
-			CLOSE(pipey[1]);*/
 			if(pipe(pipey) < 0){
 				perror("pipe()");
 				goto bail;
 			}
-			fprintf(stderr, "ush: %d: pipe: [%d, %d]\n", getpid(), pipey[0], pipey[1]);
 			p->out = pipey[1];
 			p->next->in = pipey[0];
 		}else
@@ -74,8 +70,22 @@ int job_start(struct job *j)
 
 		switch(p->pid = fork()){
 			case 0:
-				CLOSE(pipey[0]); /* FIXME for more than 2 processes in a pipe */
-				CLOSE(pipey[1]);
+#define REDIR(a, b) \
+					do{ \
+						/* close b and copy a into b */ \
+						if(a != b){ \
+							if(dup2(a, b) == -1) \
+								perror("dup2()"); \
+							if(close(a) == -1) \
+								perror("close()"); \
+						} \
+					}while(0)
+				REDIR(p->in,   STDIN_FILENO);
+				REDIR(p->out, STDOUT_FILENO);
+				REDIR(p->err, STDERR_FILENO);
+#undef REDIR
+				close(pipey[0]);
+				close(pipey[1]);
 				proc_exec(p, j->gid);
 				break; /* unreachable */
 

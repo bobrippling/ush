@@ -46,22 +46,6 @@ int proc_exec(struct proc *p, int pgid)
 	signal(SIGTTIN, SIG_DFL);
 	signal(SIGTTOU, SIG_DFL);
 	signal(SIGCHLD, SIG_DFL);
-#define REDIR(a, b) \
-		do{ \
-			/* close b and copy a into b */ \
-			if(dup2(a, b) == -1) \
-				perror("dup2()"); \
-			if(a != b){ \
-				if(close(a) == -1) \
-					perror("close()"); \
-				else \
-					fprintf(stderr, "ush: %d: child: close(%d)\n", getpid(), a); \
-			} \
-		}while(0)
-	REDIR(p->in,   STDIN_FILENO);
-	REDIR(p->out, STDOUT_FILENO);
-	REDIR(p->err, STDERR_FILENO);
-#undef REDIR
 
 	EXEC_FUNC(*p->argv, p->argv);
 	fprintf(stderr, "execv(): %s: %s\n", *p->argv, strerror(errno));
