@@ -37,10 +37,10 @@ struct job *job_new(char *cmd, char ***argvp)
 	return j;
 }
 
-void job_close_fds(struct job *j)
+void job_close_fds(struct job *j, struct proc *pbreak)
 {
 	struct proc *p;
-	for(p = j->proc; p; p = p->next){
+	for(p = j->proc; p && p != pbreak; p = p->next){
 		if(p->in != STDIN_FILENO)
 			close(p->in);
 		if(p->out != STDOUT_FILENO)
@@ -72,8 +72,8 @@ int job_start(struct job *j)
 			case 0:
 #define REDIR(a, b) \
 					do{ \
-						/* close b and copy a into b */ \
 						if(a != b){ \
+							/* close b and copy a into b */ \
 							if(dup2(a, b) == -1) \
 								perror("dup2()"); \
 							if(close(a) == -1) \
@@ -84,10 +84,7 @@ int job_start(struct job *j)
 				REDIR(p->out, STDOUT_FILENO);
 				REDIR(p->err, STDERR_FILENO);
 #undef REDIR
-#define CLOSE(n) do{ if(n >= 0) close(n); }while(0)
-				CLOSE(pipey[0]);
-				CLOSE(pipey[1]);
-#undef CLOSE
+				job_close_fds(j, p->next);
 				proc_exec(p, j->gid);
 				break; /* unreachable */
 
@@ -103,13 +100,13 @@ int job_start(struct job *j)
 	}
 
 	/* close our access to all these pipes */
-	job_close_fds(j);
+	job_close_fds(j, NULL);
 
 	return 0;
 bail:
 	for(; p; p = p->next)
 		p->state = FIN;
-	job_close_fds(j);
+	job_close_fds(j, NULL);
 	job_cont(j);
 	return 1;
 }
