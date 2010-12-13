@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "readline.h"
 #include "parse.h"
@@ -13,6 +14,7 @@ static char *prompt_and_line(void);
 
 char ***ureadline(int *eof)
 {
+	char ***ret;
 	char *buffer, *nl;
 
 	*eof = 0;
@@ -30,11 +32,14 @@ char ***ureadline(int *eof)
 	if(*buffer == '\0')
 		return NULL;
 
-	return parse(buffer);
+	ret = parse(buffer);
+	free(buffer);
+	return ret;
 }
 
 static char *prompt_and_line()
 {
+	/* here's where the tab completion magic will happen, kids */
 	char *buffer = umalloc(BSIZ);
 	fputs("% ", stdout);
 
@@ -43,6 +48,7 @@ static char *prompt_and_line()
 			perror("read()");
 		else
 			puts("exit");
+		free(buffer);
 		return NULL;
 	}
 	return buffer;

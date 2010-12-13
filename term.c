@@ -65,12 +65,14 @@ int term_term(void)
 	return 0;
 }
 
-int term_fg_proc(pid_t pid)
+void term_attr_set(struct termios *t)
 {
-	/*
-	 * http://www.gnu.org/s/libc/manual/html_node/Implementing-a-Shell.html#Implementing-a-Shell
-	 */
-	(void)pid;
+	if(tcsetattr(STDIN_FILENO, TCSAFLUSH, t))
+		perror("tcsetattr()");
+}
 
-	return 0;
+void term_attr_orig(void)
+{
+	if(tcsetattr(STDIN_FILENO, TCSAFLUSH, &attr_orig))
+		perror("tcsetattr()");
 }

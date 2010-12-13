@@ -84,8 +84,10 @@ int job_start(struct job *j)
 				REDIR(p->out, STDOUT_FILENO);
 				REDIR(p->err, STDERR_FILENO);
 #undef REDIR
-				close(pipey[0]);
-				close(pipey[1]);
+#define CLOSE(n) do{ if(n >= 0) close(n); }while(0)
+				CLOSE(pipey[0]);
+				CLOSE(pipey[1]);
+#undef CLOSE
 				proc_exec(p, j->gid);
 				break; /* unreachable */
 
@@ -139,6 +141,7 @@ int job_wait_all(struct job *j)
 	while(!j->complete)
 		if(job_wait(j))
 			return 1;
+	/* TODO: term_attr_orig() */
 	return 0;
 }
 

@@ -137,7 +137,7 @@ char ***parse(char *in)
 			GET_CURRENT_STRING(argv[0]);
 
 			nexttoken();
-			for(; current_token == TOKEN_STRING; nexttoken()){
+			for(argv[1] = NULL; current_token == TOKEN_STRING; nexttoken()){
 				argvp[argvp_idx] = argv = urealloc(argv, (argv_idx + 2) * sizeof(*argv));
 				GET_CURRENT_STRING(argv[argv_idx++]);
 				argv[argv_idx  ] = NULL;

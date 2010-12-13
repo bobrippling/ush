@@ -3,6 +3,7 @@
 #include <string.h>
 #include <sys/wait.h>
 #include <errno.h>
+#include <termios.h>
 
 #include "util.h"
 #include "job.h"
@@ -54,6 +55,7 @@ int lewp()
 			for(i = 0; argvp[i]; i++)
 				for(j = 0; argvp[i][j]; j++)
 					printf("argvp[%d][%d]: \"%s\"\n", i, j, argvp[i][j]);
+
 			ufree_argvp(argvp);
 		}
 #else
