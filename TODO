@@ -1,4 +1,8 @@
+job background stuff
+
 readline: tab completion
 parse:    $varname, *, etc
 
-job background stuff
+history
+
+cd, builtin echo, ls, ps and kill
