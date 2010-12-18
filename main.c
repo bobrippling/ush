@@ -5,6 +5,12 @@
 #include <errno.h>
 #include <termios.h>
 
+#undef ARGV_PRINT
+
+#ifdef ARGV_PRINT
+# include <stdlib.h>
+#endif
+
 #include "util.h"
 #include "job.h"
 #include "proc.h"
@@ -12,7 +18,6 @@
 #include "term.h"
 #include "config.h"
 
-#undef ARGV_PRINT
 
 jmp_buf allocerr;
 
@@ -20,30 +25,33 @@ struct job *jobs = NULL;
 
 int lewp()
 {
-	char ***argvp;
+	char ****argvpp;
 
 	do{
 		struct job *j;
 		int eof;
 
-		argvp = ureadline(&eof);
+		argvpp = ureadline(&eof);
 		if(eof)
 			break;
-		else if(!argvp)
+		else if(!argvpp)
 			continue;
 
 #ifdef ARGV_PRINT
 		{
-			int i, j;
-			for(i = 0; argvp[i]; i++)
-				for(j = 0; argvp[i][j]; j++)
-					printf("argvp[%d][%d]: \"%s\"\n", i, j, argvp[i][j]);
-
-			ufree_argvp(argvp);
+			int i, j, k;
+			for(i = 0; argvpp[i]; i++){
+				for(j = 0; argvpp[i][j]; j++)
+					for(k = 0; argvpp[i][j][k]; k++)
+						printf("argvpp[%d][%d][%d]: \"%s\"\n", i, j, k, argvpp[i][j][k]);
+				ufree_argvp(argvpp[i]);
+			}
+			free(argvpp);
+			continue;
 		}
 #endif
 
-		j = job_new(ustrdup_argvp(argvp), argvp);
+		j = job_new(ustrdup_argvpp(argvpp), argvpp);
 		j->next = jobs;
 		jobs = j;
 

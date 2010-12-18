@@ -12,9 +12,9 @@
 static char *prompt_and_line(void);
 
 
-char ***ureadline(int *eof)
+char ****ureadline(int *eof)
 {
-	char ***ret;
+	char ****ret;
 	char *buffer, *nl;
 
 	*eof = 0;

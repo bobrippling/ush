@@ -9,14 +9,14 @@ struct job
 	int job_id;
 	int complete;
 	struct proc *proc; /* list */
-	/*struct job  *afterjob;*/
+	struct job  *afterjob;
 	/* next job in the list - "echo hi; vi test.c" */
 
 
 	struct job *next; /* link-a-list helper */
 };
 
-struct job *job_new(char *cmd, char ***argvp);
+struct job *job_new(char *cmd, char ****argvpp);
 void        job_rm(struct job **jobs, struct job *j);
 
 int         job_start(   struct job *);

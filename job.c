@@ -18,35 +18,48 @@
 #endif
 
 /** create a struct proc for each argv */
-struct job *job_new(char *cmd, char ***argvp)
+struct job *job_new(char *cmd, char ****argvpp)
 {
-	extern struct job *jobs;
-	struct job *j;
-	struct proc **tail;
-	int jid = 1;
+	struct job *prevj = NULL, *firstj;
+	char ***argvpp_iter;
 
-	for(j = jobs; j; j = j->next)
-		if(j->job_id == jid){
-			jid++;
-			j = jobs;
+	for(argvpp_iter = *argvpp; *argvpp_iter; argvpp_iter++){
+		extern struct job *jobs;
+		struct job *j;
+		struct proc **tail;
+		int jid = 1;
+		char ***argvp = argvpp_iter;
+
+		for(j = jobs; j; j = j->next)
+			if(j->job_id == jid){
+				jid++;
+				j = jobs;
+			}
+
+		j = umalloc(sizeof *j);
+		memset(j, 0, sizeof *j);
+
+		j->cmd = cmd;
+		j->argvp = argvp;
+		j->job_id = jid;
+
+		tail = &j->proc;
+		while(*argvp){
+			*tail = proc_new(*argvp++);
+			tail = &(*tail)->next;
 		}
 
-	j = umalloc(sizeof *j);
-	memset(j, 0, sizeof *j);
+		*tail = NULL;
 
-	j->cmd = cmd;
-	j->argvp = argvp;
-	j->job_id = jid;
+		if(prevj)
+			prevj->afterjob = j;
+		else
+			firstj = j;
 
-	tail = &j->proc;
-	while(*argvp){
-		*tail = proc_new(*argvp++);
-		tail = &(*tail)->next;
+		prevj = j;
 	}
 
-	*tail = NULL;
-
-	return j;
+	return firstj;
 }
 
 void job_rm(struct job **jobs, struct job *j)

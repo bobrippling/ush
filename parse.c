@@ -13,6 +13,7 @@ enum token
 {
 	TOKEN_STRING,
 	TOKEN_PIPE,
+	TOKEN_SEMI_COLON,
 	TOKEN_EOL,
 	TOKEN_UNKNOWN
 } current_token;
@@ -23,17 +24,18 @@ char *current_string = NULL;
 const char *token_to_string(enum token t)
 {
 	switch(t){
-		case TOKEN_STRING:  return "STRING";
-		case TOKEN_PIPE:    return "PIPE";
-		case TOKEN_EOL:     return "EOL";
-		case TOKEN_UNKNOWN: return "UNKNOWN";
+		case TOKEN_STRING:     return "STRING";
+		case TOKEN_PIPE:       return "PIPE";
+		case TOKEN_SEMI_COLON: return "SEMI_COLON";
+		case TOKEN_EOL:        return "EOL";
+		case TOKEN_UNKNOWN:    return "UNKNOWN";
 	}
-	return "?";
+	return "TOKEN_?";
 }
 
 int iswordchar(char c)
 {
-	return c && !isspace(c) && c != '|';
+	return c && !isspace(c) && c != '|' && c != ';';
 }
 
 char nextchar()
@@ -59,6 +61,10 @@ void nexttoken()
 	switch(c){
 		case '|':
 			current_token = TOKEN_PIPE;
+			return;
+
+		case ';':
+			current_token = TOKEN_SEMI_COLON;
 			return;
 
 		case '\0':
@@ -94,41 +100,27 @@ int token_init()
 	return 0;
 }
 
-char ***parse(char *in)
+char ****parse(char *in)
 {
-#ifdef OLD
-	int argc, i;
-	char ***argvp;
+	char ****argvpp = umalloc(2 * sizeof(*argvpp));
+	int argvp_idx = 0, argvpp_idx = 0;
+#define argvp (argvpp[argvpp_idx])
+#define argv  (argvp[argvp_idx])
 
-	argvp = umalloc(2 * sizeof(char **));
-	argvp[1] = NULL;
-
-# define argv argvp[0]
-	argc = 0;
-	for(space = buffer; space; space = strchr(space + 1, ' '))
-		argc++;
-
-	argv = umalloc((argc+1) * sizeof(char *));
-
-	argv[argc] = NULL;
-	for(space = strtok(buffer, " "), i = 0;
-			space && i < argc;
-			space = strtok(NULL, " "), i++)
-		argv[i] = ustrdup(space);
-
-	return argvp;
-#else
-	char ***argvp = umalloc(2 * sizeof(*argvp));
-	char  **argv;
-	int argvp_idx = 0;
+	argvpp[argvpp_idx + 1] = NULL;
 
 	buffer = in;
 
 	if(token_init())
 		return NULL;
 
+	argvp = umalloc(2 * sizeof(*argvp));
+	argvp[argvp_idx + 1] = NULL;
+
+
 	do{
-		argv = argvp[argvp_idx] = umalloc(2 * sizeof(*argv));
+		argv = umalloc(2 * sizeof(*argv));
+		argv[1] = NULL;
 
 		if(current_token == TOKEN_STRING){
 			/* program */
@@ -137,10 +129,10 @@ char ***parse(char *in)
 			GET_CURRENT_STRING(argv[0]);
 
 			nexttoken();
-			for(argv[1] = NULL; current_token == TOKEN_STRING; nexttoken()){
-				argvp[argvp_idx] = argv = urealloc(argv, (argv_idx + 2) * sizeof(*argv));
+			for(; current_token == TOKEN_STRING; nexttoken()){
+				argv = urealloc(argv, (argv_idx + 2) * sizeof(*argv));
 				GET_CURRENT_STRING(argv[argv_idx++]);
-				argv[argv_idx  ] = NULL;
+				argv[argv_idx] = NULL;
 			}
 
 			if(current_token == TOKEN_EOL){
@@ -149,6 +141,16 @@ char ***parse(char *in)
 				nexttoken();
 				argvp_idx++;
 				argvp = urealloc(argvp, (argvp_idx + 2) * sizeof(*argvp));
+				argvp[argvp_idx + 1] = NULL;
+			}else if(current_token == TOKEN_SEMI_COLON){
+				nexttoken();
+				argvpp_idx++;
+				argvpp = urealloc(argvpp, (argvpp_idx + 2) * sizeof(*argvpp));
+				argvpp[argvpp_idx + 1] = NULL;
+
+				argvp_idx = 0;
+				argvp  = umalloc(2 * sizeof(*argvp));
+				argvp[argvp_idx + 1] = NULL;
 			}else
 				goto unexpected;
 		}else{
@@ -159,7 +161,5 @@ unexpected:
 		}
 	}while(1);
 
-	argvp[argvp_idx + 1] = NULL;
-	return argvp;
-#endif
+	return argvpp;
 }
