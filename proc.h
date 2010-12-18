@@ -5,9 +5,10 @@ struct proc
 {
 	char **argv;
 	pid_t pid;
-	enum { SPAWN, FG, BG, FIN } state;
-	int exit_status;
+	enum { PROC_SPAWN, PROC_RUN, PROC_STOP, PROC_FIN } state;
 	int in, out, err;
+
+	int exit_code, exit_sig, last_sig;
 
 	struct proc *next;
 };
@@ -15,5 +16,6 @@ struct proc
 struct proc *proc_new(char **argv);
 int          proc_exec(struct proc *, int pgid);
 void         proc_free(struct proc *);
+int          proc_argc(struct proc *);
 
 #endif

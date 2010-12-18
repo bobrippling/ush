@@ -18,23 +18,6 @@ jmp_buf allocerr;
 
 struct job *jobs = NULL;
 
-void rm_job(struct job *j)
-{
-	if(j == jobs){
-		jobs = j->next;
-		job_free(j);
-	}else{
-		struct job *prev;
-
-		for(prev = jobs; prev->next; prev = prev->next)
-			if(j == prev->next){
-				prev->next = j->next;
-				job_free(j);
-				break;
-			}
-	}
-}
-
 int lewp()
 {
 	char ***argvp;
@@ -58,20 +41,20 @@ int lewp()
 
 			ufree_argvp(argvp);
 		}
-#else
+#endif
+
 		j = job_new(ustrdup_argvp(argvp), argvp);
 		j->next = jobs;
 		jobs = j;
 
 		if(job_start(j))
 			perror("job_start()");
-			/* FIXME: cleanup */
-		else if(job_wait_all(j) && errno != ECHILD)
+
+		if(job_wait_all(j, 0))
 			perror("job_wait_all()");
 			/* FIXME: cleanup */
 
-		rm_job(j);
-#endif
+		job_check_all(&jobs);
 	}while(1);
 
 	return 0;

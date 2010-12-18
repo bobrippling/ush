@@ -8,6 +8,7 @@
 
 #include "util.h"
 #include "proc.h"
+#include "builtin.h"
 #include "config.h"
 
 #define EXEC_FUNC execvp
@@ -25,7 +26,7 @@ struct proc *proc_new(char **argv)
 	p->argv = argv;
 	p->pid = -1;
 	p->next = NULL;
-	p->state = SPAWN;
+	p->state = PROC_SPAWN;
 	p->in = p->out = p->err = -1;
 
 	return p;
@@ -46,6 +47,8 @@ int proc_exec(struct proc *p, int pgid)
 	signal(SIGTTIN, SIG_DFL);
 	signal(SIGTTOU, SIG_DFL);
 	signal(SIGCHLD, SIG_DFL);
+
+	builtin_exec(p);
 
 	EXEC_FUNC(*p->argv, p->argv);
 	fprintf(stderr, "execv(): %s: %s\n", *p->argv, strerror(errno));
