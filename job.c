@@ -52,14 +52,33 @@ struct job *job_new(char *cmd, char ****argvpp)
 		*tail = NULL;
 
 		if(prevj)
-			prevj->afterjob = j;
+			prevj->jobnext = j;
 		else
 			firstj = j;
 
+		j->jobprev = prevj;
 		prevj = j;
 	}
 
 	return firstj;
+}
+
+void job_next(struct job **jobs, struct job *j)
+{
+	if(j->jobnext){
+		struct job *next = j->next;
+
+		fprintf(stderr, "job_next(): \"%s\" <-- \"%s\"\n",
+				j->cmd, j->jobnext->cmd ? : "[NULL]");
+
+		/* FIXME FIXME FIXME */
+		job_free_single(j);
+
+		job_start(j->jobnext);
+	}else{
+		fprintf(stderr, "job_next(): \"%s\" -> FIN\n", j->cmd);
+		job_rm(jobs, j);
+	}
 }
 
 void job_rm(struct job **jobs, struct job *j)
@@ -198,14 +217,14 @@ int job_check_all(struct job **jobs)
 restart:
 	for(j = *jobs; j; j = j->next)
 		if(job_complete(j)){
-			job_rm(jobs, j);
+			job_next(jobs, j);
 			goto restart;
 		}else{
 			if(job_wait_all(j, 1))
 				return 1;
 
 			if(job_complete(j)){
-				job_rm(jobs, j);
+				job_next(jobs, j);
 				goto restart;
 			}
 		}
@@ -231,7 +250,7 @@ int job_wait_all(struct job *j, int async)
 	for(p = j->proc; p; p = p->next)
 		if(p->state == PROC_STOP){
 			job_stop(j);
-			return 0;
+			break;
 		}
 
 	return 0;
@@ -319,7 +338,7 @@ rewait:
 	return 0;
 }
 
-void job_free(struct job *j)
+void job_free_single(struct job *j)
 {
 	struct proc *p, *next;
 	for(p = j->proc; p; p = next){
@@ -328,5 +347,4 @@ void job_free(struct job *j)
 	}
 	ufree_argvp(j->argvp);
 	free(j->cmd);
-	free(j);
 }

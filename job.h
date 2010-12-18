@@ -9,7 +9,7 @@ struct job
 	int job_id;
 	int complete;
 	struct proc *proc; /* list */
-	struct job  *afterjob;
+	struct job  *jobnext, *jobprev;
 	/* next job in the list - "echo hi; vi test.c" */
 
 
@@ -24,7 +24,7 @@ int         job_wait(    struct job *, int async);
 int         job_wait_all(struct job *, int async);
 int         job_check_all(struct job **jobs);
 
-void        job_free(    struct job *);
+void        job_free_single(struct job *j);
 
 int         job_sig( struct job *, int sig);
 int         job_stop(struct job *);
