@@ -40,25 +40,21 @@ int lewp()
 #ifdef ARGV_PRINT
 		{
 			int i, j, k;
-			for(i = 0; argvpp[i]; i++){
+			for(i = 0; argvpp[i]; i++)
 				for(j = 0; argvpp[i][j]; j++)
 					for(k = 0; argvpp[i][j][k]; k++)
 						printf("argvpp[%d][%d][%d]: \"%s\"\n", i, j, k, argvpp[i][j][k]);
-				ufree_argvp(argvpp[i]);
-			}
-			free(argvpp);
-			continue;
 		}
 #endif
 
-		j = job_new(ustrdup_argvpp(argvpp), argvpp);
+		j = job_new(argvpp);
 		j->next = jobs;
 		jobs = j;
 
 		if(job_start(j))
 			perror("job_start()");
 
-		if(job_wait_all(j, 0))
+		if(job_wait_all(j, &jobs, 0))
 			perror("job_wait_all()");
 			/* FIXME: cleanup */
 

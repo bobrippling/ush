@@ -45,7 +45,7 @@ static char *prompt_and_line()
 
 	if(!fgets(buffer, BSIZ, stdin)){
 		if(ferror(stdin))
-			perror("read()");
+			perror("ush: read()");
 		else
 			puts("exit");
 		free(buffer);

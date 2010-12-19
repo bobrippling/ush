@@ -314,7 +314,7 @@ BUILTIN(jobs)
 			continue;
 
 		printf("job %d [%s] (\"%s\")\n", j->job_id,
-				j->complete ? "complete" : "running", j->cmd);
+				job_state_name(j), j->cmd);
 
 		for(p = j->proc; p; p = p->next){
 			printf("\tproc %d ", p->pid);

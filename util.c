@@ -43,26 +43,29 @@ char *ustrndup(const char *s, size_t n)
 	return p;
 }
 
-char *ustrdup_argvpp(char ****argvpp)
+char *ustrdup_argvp(char ***argvpp)
 {
-	char ****ppiter, ***piter, **iter, *ret;
+	char ***piter, **iter, *ret;
 	int len = 1;
 
-	for(ppiter = argvpp; *ppiter; ppiter++)
-		for(piter = *ppiter; *piter; piter++)
-			for(iter = *piter; *iter; iter++)
-				len += strlen(*iter) + 1;
+	for(piter = argvpp; *piter; piter++){
+		for(iter = *piter; *iter; iter++)
+			len += strlen(*iter) + 1;
+		len += 2; /* "| " */
+	}
 
 	ret = umalloc(len);
 	*ret = '\0';
 
-	for(ppiter = argvpp; *ppiter; ppiter++)
-		for(piter = *ppiter; *piter; piter++)
-			for(iter = *piter; *iter; iter++){
-				strcat(ret, *iter);
+	for(piter = argvpp; *piter; piter++){
+		for(iter = *piter; *iter; iter++){
+			strcat(ret, *iter);
+			if(iter[1])
 				strcat(ret, " ");
-			}
-	/* TODO: insert '|' and ';' */
+		}
+		if(piter[1])
+			strcat(ret, "| ");
+	}
 
 	return ret;
 }

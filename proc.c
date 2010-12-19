@@ -39,7 +39,7 @@ int proc_exec(struct proc *p, int pgid)
 		pgid = getpid();
 
 	setpgid(getpid(), pgid);
-	tcsetpgrp(STDIN_FILENO, pgid);
+	/*tcsetpgrp(STDIN_FILENO, pgid);*/
 
 	signal(SIGINT,  SIG_DFL);
 	signal(SIGQUIT, SIG_DFL);
