@@ -83,8 +83,12 @@ int job_next(struct job **jobs, struct job *j)
 			return 0;
 		}
 
-	job_rm(jobs, j);
-	return 1;
+	if(job_fully_complete(j)){
+		job_rm(jobs, j);
+		return 1;
+	}
+
+	return 0;
 }
 
 void job_rm(struct job **jobs, struct job *j)
@@ -356,7 +360,7 @@ void job_free_all(struct job *j)
 	struct job *iter, *delthis;
 
 	for(iter = j; iter;
-			delthis = iter, iter = iter->next, free(delthis)){
+			delthis = iter, iter = iter->jobnext, free(delthis)){
 		struct proc *p, *next;
 
 		for(p = j->proc; p; p = next){
@@ -377,4 +381,18 @@ const char *job_state_name(struct job *j)
 		case JOB_MOVED_ON: return "complete (moved on)";
 	}
 	return NULL;
+}
+
+int job_fully_complete(struct job *j)
+{
+	for(; j; j = j->jobnext)
+		switch(j->state){
+			case JOB_BEGIN:
+			case JOB_RUNNING:
+				return 0;
+			default:
+				break;
+		}
+
+	return 1;
 }

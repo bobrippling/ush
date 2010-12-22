@@ -76,7 +76,11 @@ int main(int argc, const char **argv)
 	(void)argc;
 	(void)argv;
 
-	term_init();
+	if(term_init()){
+		fprintf(stderr, "%s: aborting - couldn't initialise terminal\n",
+				*argv);
+		return 1;
+	}
 	ret = lewp();
 	term_term();
 
