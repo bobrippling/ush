@@ -33,6 +33,7 @@ int lewp()
 
 		argvpp = ureadline(&eof);
 		if(eof)
+			/* FIXME: kill children */
 			break;
 		else if(!argvpp)
 			continue;
@@ -54,10 +55,7 @@ int lewp()
 		if(job_start(j))
 			perror("job_start()");
 
-		if(job_wait_all(j, &jobs, 0))
-			perror("job_wait_all()");
-			/* FIXME: cleanup */
-
+		job_wait_all(j, &jobs, 0);
 		job_check_all(&jobs);
 	}while(1);
 

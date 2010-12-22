@@ -294,37 +294,29 @@ BUILTIN(bg)
 BUILTIN(jobs)
 {
 	extern struct job *jobs;
-	const pid_t mypid = getpid();
-	struct job *j;
+	struct job *j, *j2;
 
 	if(argc > 1)
 		fprintf(stderr, "%s: ignoring arguments\n", *argv);
 
 	for(j = jobs; j; j = j->next){
-		struct proc *p;
-		int isme = 0;
+		printf("job %d\n", j->job_id);
 
-		for(p = j->proc; p; p = p->next)
-			if(p->pid == mypid){
-				isme = 1;
-				break;
+		for(j2 = j; j2; j2 = j2->jobnext){
+			struct proc *p;
+
+			printf("\t\"%s\": %s\n", j2->cmd, job_state_name(j2));
+
+			for(p = j2->proc; p; p = p->next){
+				printf("\t\tproc %d ", p->pid);
+				switch(p->state){
+					case PROC_SPAWN: /* probably us */
+					case PROC_RUN:   printf("RS (running or sleeping)"); break;
+					case PROC_STOP:  printf("T (stopped)");              break;
+					case PROC_FIN:   printf("- (finished)");             break;
+				}
+				printf(" (\"%s\")\n", *p->argv);
 			}
-
-		if(isme)
-			continue;
-
-		printf("job %d [%s] (\"%s\")\n", j->job_id,
-				job_state_name(j), j->cmd);
-
-		for(p = j->proc; p; p = p->next){
-			printf("\tproc %d ", p->pid);
-			switch(p->state){
-				case PROC_SPAWN: /* probably us */
-				case PROC_RUN:   printf("running");     break;
-				case PROC_STOP:  printf("stopped");     break;
-				case PROC_FIN:   printf("finished");    break;
-			}
-			printf(" (\"%s\")\n", *p->argv);
 		}
 	}
 

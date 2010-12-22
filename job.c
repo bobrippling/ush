@@ -179,6 +179,8 @@ int job_start(struct job *j)
 	/* close our access to all these pipes */
 	job_close_fds(j, NULL);
 
+	j->state = JOB_RUNNING;
+
 	return 0;
 bail:
 	for(; p; p = p->next)
@@ -208,34 +210,35 @@ int job_fg(struct job *j, struct job **jobs)
 
 int job_check_all(struct job **jobs)
 {
-	struct job *j;
+	struct job *jhead, *jactual;
 
 restart:
-	for(j = *jobs; j; j = j->next)
-		switch(j->state){
-			case JOB_COMPLETE:
-				j->state = JOB_MOVED_ON;
-				job_next(jobs, j);
-				goto restart;
-
-			case JOB_RUNNING:
-				/*
-				 * asyncronously check for completion
-				 * + remove if done
-				 */
-				if(job_wait_all(j, jobs, 1))
-					return 1;
-
-				if(j->state == JOB_COMPLETE){
-					job_next(jobs, j);
+	for(jhead = *jobs; jhead; jhead = jhead->next)
+		for(jactual = jhead; jactual; jactual = jactual->jobnext)
+			switch(jactual->state){
+				case JOB_COMPLETE:
+					jactual->state = JOB_MOVED_ON;
+					job_next(jobs, jactual);
 					goto restart;
-				}
-				break;
 
-			case JOB_MOVED_ON:
-			case JOB_BEGIN:
-				break;
-		}
+				case JOB_RUNNING:
+					/*
+					 * asyncronously check for completion
+					 * + remove if done
+					 */
+					if(job_wait_all(jactual, jobs, 1))
+						goto restart;
+
+					if(jactual->state == JOB_COMPLETE){
+						job_next(jobs, jactual);
+						goto restart;
+					}
+					break;
+
+				case JOB_MOVED_ON:
+				case JOB_BEGIN:
+					break;
+			}
 
 	return 0;
 }
@@ -252,8 +255,7 @@ int job_wait_all(struct job *j, struct job **jobs, int async)
 			return 0;
 		else if(iter->state == JOB_COMPLETE){
 			if(job_next(jobs, iter))
-				/* done with the job list */
-				return 0;
+				return 1; /* done with the job list - tell called we changed something</matrix> */
 			continue;
 		}
 
@@ -375,7 +377,7 @@ void job_free_all(struct job *j)
 const char *job_state_name(struct job *j)
 {
 	switch(j->state){
-		case JOB_BEGIN:    return "beginning";
+		case JOB_BEGIN:    return "init";
 		case JOB_RUNNING:  return "running";
 		case JOB_COMPLETE: return "complete";
 		case JOB_MOVED_ON: return "complete (moved on)";
