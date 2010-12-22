@@ -91,6 +91,14 @@ int job_next(struct job **jobs, struct job *j)
 	return 0;
 }
 
+int job_in_group(struct job *needle, struct job *group)
+{
+	for(; group; group = group->jobnext)
+		if(needle == group)
+			return 1;
+	return 0;
+}
+
 void job_rm(struct job **jobs, struct job *j)
 {
 	if(j == *jobs){
@@ -100,12 +108,15 @@ void job_rm(struct job **jobs, struct job *j)
 	}else{
 		struct job *prev;
 
+		/* FIXME - job_in_group business */
 		for(prev = *jobs; prev->next; prev = prev->next)
-			if(j == prev->next){
+			if(job_in_group(j, prev->next)){
 				prev->next = j->next;
 				job_free_all(j);
-				break;
+				return;
 			}
+
+		fprintf(stderr, "job_rm(): \"%s\" not found!\n", j->cmd);
 	}
 }
 
@@ -255,7 +266,7 @@ int job_wait_all(struct job *j, struct job **jobs, int async)
 			return 0;
 		else if(iter->state == JOB_COMPLETE){
 			if(job_next(jobs, iter))
-				return 1; /* done with the job list - tell called we changed something</matrix> */
+				return 1; /* done with the job list - tell caller we changed something</matrix> */
 			continue;
 		}
 
@@ -387,6 +398,7 @@ const char *job_state_name(struct job *j)
 
 int job_fully_complete(struct job *j)
 {
+	/* FIXME: rewind to job head and check those first */
 	for(; j; j = j->jobnext)
 		switch(j->state){
 			case JOB_BEGIN:
