@@ -392,7 +392,7 @@ void job_free_all(struct job *j)
 const char *job_state_name(struct job *j)
 {
 	switch(j->state){
-		case JOB_BEGIN:    return "init";
+		case JOB_BEGIN:    return "initialising";
 		case JOB_RUNNING:  return "running";
 		case JOB_COMPLETE: return "complete";
 		case JOB_MOVED_ON: return "complete (moved on)";

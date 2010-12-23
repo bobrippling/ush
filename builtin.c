@@ -194,17 +194,16 @@ BUILTIN(kill)
 	int sig = SIGTERM, i = 1, ret = 0;
 
 	if(argc == 1){
-		fprintf(stderr, "%s: need args\n", *argv);
+usage:
+		fprintf(stderr, "Usage: %s [-SIG] [pid...] [%%jid...] \n", *argv);
 		return 1;
 	}
 
 	if(argv[i][0] == '-'){
 		char *ssig = argv[i++] + 1;
 
-		if(argc == 2){
-			fprintf(stderr, "%s: need pids\n", *argv);
-			return 1;
-		}
+		if(argc == 2)
+			goto usage;
 
 		if(sscanf(ssig, "%d", &sig) != 1){
 			unsigned int nsig;
@@ -228,15 +227,40 @@ BUILTIN(kill)
 	}
 
 	for(; i < argc; i++){
-		int pid;
-		if(sscanf(argv[i], "%d", &pid) == 1){
+		int pid, is_jid = 0;
+
+		if(*argv[i] == '%'){
+			argv[i]++;
+			is_jid = 1;
+		}
+
+
+		if(sscanf(argv[i], "%d", &pid) != 1){
+			fprintf(stderr, "%s: \"%s\" not a pid/jid (ignored)\n", *argv, argv[i]);
+			ret = 1;
+			continue;
+		}
+
+		if(is_jid){
+			extern struct job *jobs;
+			struct job *j;
+
+			for(j = jobs; j; j = j->next){
+				struct job *iter;
+				for(iter = j; iter; iter = iter->jobnext)
+					if(iter->job_id == pid){
+						pid = -iter->gid;
+						goto kill;
+					}
+			}
+
+			fprintf(stderr, "%s: job %%%d not found\n", *argv, pid);
+		}else{
+kill:
 			if(kill(pid, sig)){
 				fprintf(stderr, "%s: kill(%d): %s\n", *argv, pid, strerror(errno));
 				ret = 1;
 			}
-		}else{
-			fprintf(stderr, "%s: %s not a pid (ignored)\n", *argv, argv[i]);
-			ret = 1;
 		}
 	}
 
@@ -286,7 +310,10 @@ BUILTIN(bg)
 		job_bg(j);
 		return 0;
 	}else{
-		fprintf(stderr, "no such job %s%d (use %% for a job id)\n", is_jid ? "%" : "", id);
+		if(is_jid)
+			fprintf(stderr, "no such job %%%d\n", id);
+		else
+			fprintf(stderr, "no such job with pid %d (try %%jid)\n", id);
 		return 1;
 	}
 }
@@ -315,7 +342,8 @@ BUILTIN(jobs)
 					case PROC_STOP:  printf("T (stopped)");              break;
 					case PROC_FIN:   printf("- (finished)");             break;
 				}
-				printf(" (\"%s\")\n", *p->argv);
+				printf(" (\"%s\")%s\n",
+						*p->argv, p->pid == getpid() ? " (ME)" : "");
 			}
 		}
 	}
