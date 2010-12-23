@@ -24,7 +24,7 @@ struct job *job_new_single(char ***argvp, int jid);
 struct job *job_new(char ****argvpp)
 {
 	extern struct job *jobs;
-	struct job *j, *firstj = NULL, *currentj;
+	struct job *j, *firstj = NULL, *currentj = NULL;
 	int jid = 1;
 
 	for(j = jobs; j; j = j->next)
@@ -35,6 +35,8 @@ struct job *job_new(char ****argvpp)
 
 	for(; *argvpp; argvpp++){
 		j = job_new_single(*argvpp, jid);
+
+		j->jobprev = currentj;
 
 		if(firstj)
 			currentj->jobnext = j;
@@ -93,6 +95,8 @@ int job_next(struct job **jobs, struct job *j)
 
 int job_in_group(struct job *needle, struct job *group)
 {
+	for(; group->jobprev; group = group->jobprev);
+
 	for(; group; group = group->jobnext)
 		if(needle == group)
 			return 1;
@@ -101,23 +105,21 @@ int job_in_group(struct job *needle, struct job *group)
 
 void job_rm(struct job **jobs, struct job *j)
 {
-	if(j == *jobs){
-		*jobs = j->next;
+	struct job *iter, *prev = NULL;
 
-		job_free_all(j);
-	}else{
-		struct job *prev;
-
-		/* FIXME - job_in_group business */
-		for(prev = *jobs; prev->next; prev = prev->next)
-			if(job_in_group(j, prev->next)){
+	for(iter = *jobs; iter; iter = iter->next)
+		if(job_in_group(j, iter)){
+			if(prev)
 				prev->next = j->next;
-				job_free_all(j);
-				return;
-			}
+			else
+				*jobs = j->next;
 
-		fprintf(stderr, "job_rm(): \"%s\" not found!\n", j->cmd);
-	}
+			job_free_all(iter);
+			return;
+		}else
+			prev = iter;
+
+	fprintf(stderr, "ush: job_rm(): \"%s\" not found!\n", j->cmd);
 }
 
 void job_close_fds(struct job *j, struct proc *pbreak)
@@ -372,16 +374,18 @@ void job_free_all(struct job *j)
 {
 	struct job *iter, *delthis;
 
+	for(; j->jobprev; j = j->jobprev);
+
 	for(iter = j; iter;
 			delthis = iter, iter = iter->jobnext, free(delthis)){
 		struct proc *p, *next;
 
-		for(p = j->proc; p; p = next){
+		for(p = iter->proc; p; p = next){
 			next = p->next;
 			proc_free(p);
 		}
-		ufree_argvp(j->argvp);
-		free(j->cmd);
+		ufree_argvp(iter->argvp);
+		free(iter->cmd);
 	}
 }
 
@@ -399,6 +403,8 @@ const char *job_state_name(struct job *j)
 int job_fully_complete(struct job *j)
 {
 	/* FIXME: rewind to job head and check those first */
+	for(; j->jobprev; j = j->jobprev);
+
 	for(; j; j = j->jobnext)
 		switch(j->state){
 			case JOB_BEGIN:

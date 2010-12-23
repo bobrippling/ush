@@ -9,7 +9,7 @@ struct job
 	int job_id;
 	enum { JOB_BEGIN, JOB_RUNNING, JOB_COMPLETE, JOB_MOVED_ON } state;
 	struct proc *proc; /* list */
-	struct job  *jobnext;
+	struct job  *jobnext, *jobprev;
 	/* next job in the list - "echo hi; vi test.c" */
 
 	struct job *next; /* link-a-list helper */
