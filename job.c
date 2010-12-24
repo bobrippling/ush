@@ -5,10 +5,12 @@
 #include <sys/wait.h>
 #include <errno.h>
 #include <string.h>
+#include <termios.h>
 
 #include "util.h"
 #include "proc.h"
 #include "job.h"
+#include "term.h"
 #include "config.h"
 
 #ifdef USH_DEBUG
@@ -17,39 +19,8 @@
 # undef JOB_DEBUG
 #endif
 
-struct job *job_new_single(char ***argvp, int jid);
-
-
 /** create a struct proc for each argv */
-struct job *job_new(char ****argvpp)
-{
-	extern struct job *jobs;
-	struct job *j, *firstj = NULL, *currentj = NULL;
-	int jid = 1;
-
-	for(j = jobs; j; j = j->next)
-		if(j->job_id == jid){
-			jid++;
-			j = jobs;
-		}
-
-	for(; *argvpp; argvpp++){
-		j = job_new_single(*argvpp, jid);
-
-		j->jobprev = currentj;
-
-		if(firstj)
-			currentj->jobnext = j;
-		else
-			firstj = j;
-		currentj = j;
-	}
-	currentj->jobnext = NULL;
-
-	return firstj;
-}
-
-struct job *job_new_single(char ***argvp, int jid)
+struct job *job_new(char ***argvp, int jid)
 {
 	struct job *j;
 	struct proc **tail;
@@ -69,57 +40,6 @@ struct job *job_new_single(char ***argvp, int jid)
 	}
 	*tail = NULL;
 	return j;
-}
-
-int job_next(struct job **jobs, struct job *j)
-{
-	/*
-	 * start the next job in the job's list
-	 * or rm the job if the last has completed
-	 */
-	struct job *iter;
-
-	for(iter = j->jobnext; iter; iter = iter->jobnext)
-		if(iter->state == JOB_BEGIN){
-			job_start(iter);
-			return 0;
-		}
-
-	if(job_fully_complete(j)){
-		job_rm(jobs, j);
-		return 1;
-	}
-
-	return 0;
-}
-
-int job_in_group(struct job *needle, struct job *group)
-{
-	for(; group->jobprev; group = group->jobprev);
-
-	for(; group; group = group->jobnext)
-		if(needle == group)
-			return 1;
-	return 0;
-}
-
-void job_rm(struct job **jobs, struct job *j)
-{
-	struct job *iter, *prev = NULL;
-
-	for(iter = *jobs; iter; iter = iter->next)
-		if(job_in_group(j, iter)){
-			if(prev)
-				prev->next = j->next;
-			else
-				*jobs = j->next;
-
-			job_free_all(iter);
-			return;
-		}else
-			prev = iter;
-
-	fprintf(stderr, "ush: job_rm(): \"%s\" not found!\n", j->cmd);
 }
 
 void job_close_fds(struct job *j, struct proc *pbreak)
@@ -199,7 +119,7 @@ bail:
 	for(; p; p = p->next)
 		p->state = PROC_FIN;
 	job_close_fds(j, NULL);
-	job_cont(j);
+	job_sig(j, SIGCONT);
 	return 1;
 }
 
@@ -215,104 +135,35 @@ int job_sig(struct job *j, int sig)
 	return ret;
 }
 
-int job_fg(struct job *j, struct job **jobs)
-{
-	job_cont(j);
-	return job_wait_all(j, jobs, 0);
-}
-
-int job_check_all(struct job **jobs)
-{
-	struct job *jhead, *jactual;
-
-restart:
-	for(jhead = *jobs; jhead; jhead = jhead->next)
-		for(jactual = jhead; jactual; jactual = jactual->jobnext)
-			switch(jactual->state){
-				case JOB_COMPLETE:
-					jactual->state = JOB_MOVED_ON;
-					job_next(jobs, jactual);
-					goto restart;
-
-				case JOB_RUNNING:
-					/*
-					 * asyncronously check for completion
-					 * + remove if done
-					 */
-					if(job_wait_all(jactual, jobs, 1))
-						goto restart;
-
-					if(jactual->state == JOB_COMPLETE){
-						job_next(jobs, jactual);
-						goto restart;
-					}
-					break;
-
-				case JOB_MOVED_ON:
-				case JOB_BEGIN:
-					break;
-			}
-
-	return 0;
-}
-
-int job_wait_all(struct job *j, struct job **jobs, int async)
-{
-	struct proc *p;
-	struct job *iter;
-
-	for(iter = j; iter; iter = iter->jobnext){
-		job_wait(iter, async);
-
-		if(async && iter->state == JOB_RUNNING)
-			return 0;
-		else if(iter->state == JOB_COMPLETE){
-			if(job_next(jobs, iter))
-				return 1; /* done with the job list - tell caller we changed something</matrix> */
-			continue;
-		}
-
-		/*
-		 * check for a stopped job
-		 * if we find one, it's
-		 * been ^Z'd, stop other procs and return
-		 */
-		for(p = iter->proc; p; p = p->next)
-			if(p->state == PROC_STOP){
-				job_stop(iter);
-				return 0;
-				/* don't attempt to move onto any other jobs */
-			}
-	}
-
-	return 0;
-}
-
 int job_wait(struct job *j, int async)
 {
 	int wait_status = 0, proc_still_running = 0;
 	struct proc *p;
 	pid_t pid;
 #define JOB_WAIT_CHANGE_GROUP
+
 #ifdef JOB_WAIT_CHANGE_GROUP
 	const pid_t orig_pgid = getpgid(STDIN_FILENO);
 	int save;
 #endif
 
 rewait:
+
 #ifdef JOB_WAIT_CHANGE_GROUP
-	tcsetpgrp(STDIN_FILENO, j->gid);
+	term_give_to(j->gid);
 	/*setpgid(getpid(), j->gid);*/
 #endif
+
 	pid = waitpid(-j->gid, &wait_status,
 			WUNTRACED | WCONTINUED | (async ? WNOHANG : 0));
 
 #ifdef JOB_WAIT_CHANGE_GROUP
 	save = errno;
-	tcsetpgrp(STDIN_FILENO, orig_pgid);
+	term_give_to(orig_pgid);
 	/*setpgid(getpid(), orig_pgid);*/
 	errno = save;
 #endif
+
 
 	if(pid == -1){
 		if(errno == EINTR)
@@ -327,66 +178,58 @@ rewait:
 
 	for(p = j->proc; p; p = p->next)
 		if(p->pid == pid){
-			int processed = 0;
-
 			if(WIFSIGNALED(wait_status)){
-				p->last_sig = WSTOPSIG(wait_status);
-				processed = 1;
-			}
-
-			if(WIFEXITED(wait_status)){
 				p->state = PROC_FIN;
 
-				if(WIFSIGNALED(wait_status))
-					p->exit_sig = WTERMSIG(wait_status);
-				else
-					p->exit_sig = 0;
+				p->exit_sig = WTERMSIG(wait_status);
+				p->exit_code = WEXITSTATUS(wait_status); /* 0 */
+			}else if(WIFEXITED(wait_status)){
+				p->state = PROC_FIN;
 
+				p->exit_sig = 0;
 				p->exit_code = WEXITSTATUS(wait_status);
-
-				processed = 1;
 			}else if(WIFSTOPPED(wait_status)){
 				p->state = PROC_STOP;
+
 				p->exit_sig = WSTOPSIG(wait_status); /* could be TTIN or pals */
 				proc_still_running = 1;
-
-				processed = 1;
 			}else if(WIFCONTINUED(wait_status)){
 				p->state = PROC_RUN;
+
+				p->exit_sig = SIGCONT;
 				proc_still_running = 1;
-
-				processed = 1;
-			}
-
-			if(!processed)
-				fprintf(stderr, "ush: wait_status unknown for pid %d: %d\n", pid, wait_status);
-
-			break;
+			}else
+				fprintf(stderr, "job_wait(): wait_status unknown for pid %d: 0x%x\n", pid, wait_status);
 		}else if(p->state != PROC_FIN)
 			proc_still_running = 1;
 
-	if(!proc_still_running)
+
+	if(!proc_still_running){
+		for(p = j->proc; p; p = p->next)
+			if(p->state != PROC_FIN){
+				fprintf(stderr, "job_wait(): proc_still_running = 0, but \"%s\" running\n",
+						*p->argv);
+				return 0;
+			}else
+				fprintf(stderr, "job_wait(): \"%s\" PROC_FIN'd\n", *p->argv);
+
+		fprintf(stderr, "job_wait(): job \"%s\" finito\n", j->cmd);
 		j->state = JOB_COMPLETE;
+	}
 	return 0;
 }
 
-void job_free_all(struct job *j)
+void job_free(struct job *j)
 {
-	struct job *iter, *delthis;
+	struct proc *p, *next;
 
-	for(; j->jobprev; j = j->jobprev);
-
-	for(iter = j; iter;
-			delthis = iter, iter = iter->jobnext, free(delthis)){
-		struct proc *p, *next;
-
-		for(p = iter->proc; p; p = next){
-			next = p->next;
-			proc_free(p);
-		}
-		ufree_argvp(iter->argvp);
-		free(iter->cmd);
+	for(p = j->proc; p; p = next){
+		next = p->next;
+		proc_free(p);
 	}
+	ufree_argvp(j->argvp);
+	free(j->cmd);
+	free(j);
 }
 
 const char *job_state_name(struct job *j)
@@ -400,19 +243,23 @@ const char *job_state_name(struct job *j)
 	return NULL;
 }
 
-int job_fully_complete(struct job *j)
+char *job_desc(struct job *j)
 {
-	/* FIXME: rewind to job head and check those first */
-	for(; j->jobprev; j = j->jobprev);
+	char *ret;
+	int len = 1;
+	struct proc *p;
 
-	for(; j; j = j->jobnext)
-		switch(j->state){
-			case JOB_BEGIN:
-			case JOB_RUNNING:
-				return 0;
-			default:
-				break;
-		}
+	for(p = j->proc; p; p = p->next)
+		len += strlen(*p->argv) + 1; /* "|" */
 
-	return 1;
+	ret = umalloc(len + 1);
+	*ret = '\0';
+
+	for(p = j->proc; p; p = p->next){
+		strcat(ret, *p->argv);
+		if(p->next)
+			strcat(ret, "|");
+	}
+
+	return ret;
 }

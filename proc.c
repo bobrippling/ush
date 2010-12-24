@@ -34,12 +34,14 @@ struct proc *proc_new(char **argv)
 
 int proc_exec(struct proc *p, int pgid)
 {
+	int ret;
+
 	/* signals back in business */
 	if(pgid == 0)
 		pgid = getpid();
 
 	setpgid(getpid(), pgid);
-	/*tcsetpgrp(STDIN_FILENO, pgid);*/
+	/*term_give_to(pgid);*/
 
 	signal(SIGINT,  SIG_DFL);
 	signal(SIGQUIT, SIG_DFL);
@@ -51,12 +53,36 @@ int proc_exec(struct proc *p, int pgid)
 	builtin_exec(p);
 
 	EXEC_FUNC(*p->argv, p->argv);
-	fprintf(stderr, "execv(): %s: %s\n", *p->argv, strerror(errno));
-	_exit(-1);
-	return 1;
+
+	if(errno == ENOENT)
+		ret = 127;
+	else
+		ret = 126;
+
+	fprintf(stderr, "exec(): %s: %s\n", *p->argv, strerror(errno));
+
+	_exit(ret);
+	return ret;
 }
 
 void proc_free(struct proc *p)
 {
 	free(p);
+}
+
+char *proc_desc(struct proc *p)
+{
+	char **iter, *ret;
+	int len = 1;
+
+	for(iter = p->argv; *iter; iter++)
+		len += strlen(*iter);
+
+	ret = umalloc(len);
+	*ret = '\0';
+
+	for(iter = p->argv; *iter; iter++)
+		strcat(ret, *iter);
+
+	return ret;
 }

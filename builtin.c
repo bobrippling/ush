@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <termios.h>
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -13,7 +14,9 @@
 
 #include "proc.h"
 #include "job.h"
+#include "task.h"
 #include "builtin.h"
+#include "term.h"
 
 #define LEN(a) (sizeof(a) / sizeof(a[0]))
 
@@ -24,6 +27,7 @@ BUILTIN(ps);
 BUILTIN(kill);
 BUILTIN(bg);
 BUILTIN(jobs);
+BUILTIN(reset);
 
 static struct builtin
 {
@@ -31,6 +35,7 @@ static struct builtin
 	int (*const f)(int, char **);
 } builtins[] = {
 #define STRUCT_BUILTIN(n) { #n, builtin_##n }
+	STRUCT_BUILTIN(reset),
 	STRUCT_BUILTIN(echo),
 	STRUCT_BUILTIN(ps),
 	STRUCT_BUILTIN(kill),
@@ -56,6 +61,14 @@ void builtin_exec(struct proc *p)
 	for(i = 0; i < LEN(builtins); i++)
 		if(!strcmp(p->argv[0], builtins[i].argv0))
 			exit(builtins[i].f(proc_argc(p), p->argv));
+}
+
+BUILTIN(reset)
+{
+	if(argc)
+		fprintf(stderr, "%s: ignoring args\n", *argv);
+	term_attr_orig();
+	return 0;
 }
 
 BUILTIN(echo)
@@ -119,7 +132,7 @@ BUILTIN(ps)
 		return 1;
 	}
 
-	while((ent = readdir(d))){
+	while((errno = 0, ent = readdir(d))){
 		struct stat st;
 		char *path = malloc(strlen(ent->d_name) + 7);
 
@@ -242,14 +255,14 @@ usage:
 		}
 
 		if(is_jid){
-			extern struct job *jobs;
-			struct job *j;
+			extern struct task *tasks;
+			struct task *t;
 
-			for(j = jobs; j; j = j->next){
-				struct job *iter;
-				for(iter = j; iter; iter = iter->jobnext)
-					if(iter->job_id == pid){
-						pid = -iter->gid;
+			for(t = tasks; t; t = t->next){
+				struct job *j;
+				for(j = t->jobs; j; j = j->next)
+					if(j->job_id == pid){
+						pid = -j->gid;
 						goto kill;
 					}
 			}
@@ -269,8 +282,8 @@ kill:
 
 BUILTIN(bg)
 {
-	extern struct job *jobs;
-	struct job *j;
+	extern struct task *tasks;
+	struct task *t;
 	int is_jid;
 	int id;
 
@@ -290,24 +303,27 @@ BUILTIN(bg)
 		return 1;
 	}
 
-	for(j = jobs; j; j = j->next)
-		if(is_jid){
-			if(j->job_id == id)
-				break;
-		}else{
-			struct proc *p;
-			int found = 0;
-			for(p = j->proc; p; p = p->next)
-				if(p->state != PROC_FIN && p->pid == id){
-					found = 1;
+	for(t = tasks; t; t = t->next){
+		struct job *j;
+		for(j = t->jobs; j; j = j->next)
+			if(is_jid){
+				if(j->job_id == id)
 					break;
-				}
-			if(found)
-				break;
-		}
+			}else{
+				struct proc *p;
+				int found = 0;
+				for(p = j->proc; p; p = p->next)
+					if(p->state != PROC_FIN && p->pid == id){
+						found = 1;
+						break;
+					}
+				if(found)
+					break;
+			}
+	}
 
-	if(j){
-		job_bg(j);
+	if(t){
+		task_sig(t, SIGCONT);
 		return 0;
 	}else{
 		if(is_jid)
@@ -320,21 +336,22 @@ BUILTIN(bg)
 
 BUILTIN(jobs)
 {
-	extern struct job *jobs;
-	struct job *j, *j2;
+	extern struct task *tasks;
+	struct task *t;
 
 	if(argc > 1)
 		fprintf(stderr, "%s: ignoring arguments\n", *argv);
 
-	for(j = jobs; j; j = j->next){
-		printf("job %d\n", j->job_id);
+	for(t = tasks; t; t = t->next){
+		struct job *j;
+		printf("task %s\n", t->cmd);
 
-		for(j2 = j; j2; j2 = j2->jobnext){
+		for(j = t->jobs; j; j = j->next){
 			struct proc *p;
 
-			printf("\t\"%s\": %s\n", j2->cmd, job_state_name(j2));
+			printf("\tjob \"%s\": %s\n", j->cmd, job_state_name(j));
 
-			for(p = j2->proc; p; p = p->next){
+			for(p = j->proc; p; p = p->next){
 				printf("\t\tproc %d ", p->pid);
 				switch(p->state){
 					case PROC_SPAWN: /* probably us */

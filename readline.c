@@ -1,10 +1,13 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <termios.h>
 
 #include "readline.h"
 #include "parse.h"
 #include "util.h"
+#include "task.h"
 #include "config.h"
 
 #define BSIZ 256
@@ -43,10 +46,23 @@ static char *prompt_and_line()
 	char *buffer = umalloc(BSIZ);
 	fputs("% ", stdout);
 
+retry:
 	if(!fgets(buffer, BSIZ, stdin)){
-		if(ferror(stdin))
+		if(ferror(stdin)){
+			if(errno == EINTR){
+				extern volatile int got_sigchld;
+				extern struct task *tasks;
+
+				if(got_sigchld){
+					fprintf(stderr, "prompt_and_line(): sigchld\n");
+					task_check_all(&tasks);
+					got_sigchld = 0;
+				}
+				goto retry;
+			}
+
 			perror("ush: read()");
-		else
+		}else
 			puts("exit");
 		free(buffer);
 		return NULL;

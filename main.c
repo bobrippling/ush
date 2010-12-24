@@ -12,23 +12,25 @@
 #endif
 
 #include "util.h"
-#include "job.h"
 #include "proc.h"
+#include "job.h"
+#include "task.h"
+
 #include "readline.h"
 #include "term.h"
 #include "config.h"
 
 
 jmp_buf allocerr;
-
-struct job *jobs = NULL;
+volatile int got_sigchld = 0;
+struct task *tasks = NULL;
 
 int lewp()
 {
 	char ****argvpp;
 
 	do{
-		struct job *j;
+		struct task *t;
 		int eof;
 
 		argvpp = ureadline(&eof);
@@ -48,37 +50,66 @@ int lewp()
 		}
 #endif
 
-		j = job_new(argvpp);
-		j->next = jobs;
-		jobs = j;
+		t = task_new(argvpp);
+		t->next = tasks;
+		tasks = t;
 
-		if(job_start(j))
-			perror("job_start()");
+		if(task_start(t))
+			perror("task_start()");
 
-		job_wait_all(j, &jobs, 0);
-		job_check_all(&jobs);
+		task_wait(&tasks, t, 0);
+		task_check_all(&tasks);
 	}while(1);
 
 	return 0;
 }
 
+void shell_login()
+{
+	fprintf(stderr, "TODO: login\n"); /* TODO */
+}
+
+void sigh(int sig)
+{
+	if(sig == SIGCHLD){
+		fputs("GOT_SIGCHLD\n", stderr);
+		got_sigchld = 1;
+	}
+}
+
 int main(int argc, const char **argv)
 {
-	int ret;
+	int ret, i, login = argv[0][0] == '-';
+
+	signal(SIGCHLD, sigh);
 
 	if(setjmp(allocerr)){
 		perror("malloc()");
 		return 1;
 	}
 
-	(void)argc;
-	(void)argv;
+#define ARG(x) !strcmp(argv[i], "-" x)
+
+	setbuf(stdout, NULL);
+
+	for(i = 1; i < argc; i++)
+		if(ARG("l"))
+			login = 1;
+		else{
+			fprintf(stderr, "Usage: %s [-l]\n"
+					            "  -l: login shell\n", *argv);
+			return 1;
+		}
 
 	if(term_init()){
 		fprintf(stderr, "%s: aborting - couldn't initialise terminal\n",
 				*argv);
 		return 1;
 	}
+
+	if(login)
+		shell_login();
+
 	ret = lewp();
 	term_term();
 

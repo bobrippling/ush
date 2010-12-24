@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <termios.h>
 #include <signal.h>
+#include <string.h>
 
 #include "term.h"
 #include "config.h"
@@ -13,7 +14,6 @@
 #endif
 
 struct termios attr_orig;
-
 
 int term_init(void)
 {
@@ -65,6 +65,14 @@ int term_term(void)
 	return 0;
 }
 
+void term_attr_get(struct termios *t)
+{
+	if(tcgetattr(STDIN_FILENO, t)){
+		perror("tcgetattr()");
+		memset(t, 0, sizeof *t);
+	}
+}
+
 void term_attr_set(struct termios *t)
 {
 	if(tcsetattr(STDIN_FILENO, TCSAFLUSH, t))
@@ -73,6 +81,11 @@ void term_attr_set(struct termios *t)
 
 void term_attr_orig(void)
 {
-	if(tcsetattr(STDIN_FILENO, TCSAFLUSH, &attr_orig))
-		perror("tcsetattr()");
+	term_attr_set(&attr_orig);
+}
+
+void term_give_to(pid_t gid)
+{
+	if(tcsetpgrp(STDIN_FILENO, gid))
+		perror("term_give_to()");
 }

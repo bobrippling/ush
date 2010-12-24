@@ -51,7 +51,7 @@ char *ustrdup_argvp(char ***argvpp)
 	for(piter = argvpp; *piter; piter++){
 		for(iter = *piter; *iter; iter++)
 			len += strlen(*iter) + 1;
-		len += 2; /* "| " */
+		len += 3; /* " | " */
 	}
 
 	ret = umalloc(len);
@@ -64,7 +64,7 @@ char *ustrdup_argvp(char ***argvpp)
 				strcat(ret, " ");
 		}
 		if(piter[1])
-			strcat(ret, "| ");
+			strcat(ret, " | ");
 	}
 
 	return ret;
@@ -80,4 +80,22 @@ void ufree_argvp(char ***argvp)
 		free(*argvp);
 	}
 	free(orig);
+}
+
+const char *usignam(unsigned int sig)
+{
+	static const char *names[] = {
+		NULL, "HUP", "INT", "QUIT",
+		"ILL", "TRAP", "ABRT", "BUS",
+		"FPE", "KILL", "USR1", "SEGV",
+		"USR2", "PIPE", "ALRM", "TERM",
+		"STKFLT", "CHLD", "CONT", "STOP",
+		"TSTP", "TTIN", "TTOU", "URG",
+		"XCPU", "XFSZ", "VTALRM", "PROF",
+		"WINCH", "POLL", "PWR", "SYS"
+	};
+
+	if(sig < sizeof(names)/sizeof(names[0]))
+		return names[sig];
+	return NULL;
 }
