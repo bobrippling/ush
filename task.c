@@ -5,6 +5,7 @@
 #include <string.h>
 #include <signal.h>
 
+#include "term.h"
 #include "util.h"
 #include "proc.h"
 #include "job.h"

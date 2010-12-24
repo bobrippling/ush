@@ -59,7 +59,7 @@ int proc_exec(struct proc *p, int pgid)
 	else
 		ret = 126;
 
-	fprintf(stderr, "exec(): %s: %s\n", *p->argv, strerror(errno));
+	fprintf(stderr, "ush: exec(): %s: %s\n", *p->argv, strerror(errno));
 
 	_exit(ret);
 	return ret;

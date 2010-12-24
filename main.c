@@ -64,9 +64,16 @@ int lewp()
 	return 0;
 }
 
-void shell_login()
+int shell_login()
 {
-	fprintf(stderr, "TODO: login\n"); /* TODO */
+	fprintf(stderr, "TODO: source ~/.ush_profile\n"); /* TODO */
+	return 0;
+}
+
+int shell_rc()
+{
+	fprintf(stderr, "TODO: source ~/.ushrc\n"); /* TODO */
+	return 0;
 }
 
 void sigh(int sig)
@@ -105,8 +112,10 @@ int main(int argc, const char **argv)
 		return 1;
 	}
 
-	if(login)
-		shell_login();
+	if(login && shell_login())
+		return 1;
+	if(shell_rc())
+		return 1;
 
 	ret = lewp();
 	term_term();

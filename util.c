@@ -2,6 +2,9 @@
 #include <setjmp.h>
 #include <string.h>
 
+#include <unistd.h>
+#include <fcntl.h>
+
 #include "config.h"
 
 extern jmp_buf allocerr;
@@ -98,4 +101,19 @@ const char *usignam(unsigned int sig)
 	if(sig < sizeof(names)/sizeof(names[0]))
 		return names[sig];
 	return NULL;
+}
+
+int block_set(int fd, int block)
+{
+	int flags = fcntl(fd, F_GETFL);
+	if(block)
+		flags &= ~O_NONBLOCK;
+	else
+		flags |=  O_NONBLOCK;
+	return fcntl(fd, F_SETFL, flags) == -1;
+}
+
+int block_get(int fd)
+{
+	return !!(fcntl(fd, F_GETFL) & O_NONBLOCK);
 }

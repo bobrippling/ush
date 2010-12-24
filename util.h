@@ -9,4 +9,7 @@ char *ustrdup_argvp(char ***argvpp);
 void  ufree_argvp(char ***argvp);
 const char *usignam(unsigned int);
 
+int block_set(int fd, int block);
+int block_get(int fd);
+
 #endif

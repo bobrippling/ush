@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <termios.h>
 
+#include "complete.h"
 #include "readline.h"
 #include "parse.h"
 #include "util.h"
@@ -42,28 +43,29 @@ char ****ureadline(int *eof)
 
 static char *prompt_and_line()
 {
-	/* here's where the tab completion magic will happen, kids */
-	char *buffer = umalloc(BSIZ);
-	fputs("% ", stdout);
-
+	char *buffer;
 retry:
-	if(!fgets(buffer, BSIZ, stdin)){
+	if(!(buffer = ureadcomp())){
 		if(ferror(stdin)){
-			if(errno == EINTR){
-				extern volatile int got_sigchld;
-				extern struct task *tasks;
+			switch(errno){
+				case EINTR:
+					goto retry;
 
-				if(got_sigchld){
-					fprintf(stderr, "prompt_and_line(): sigchld\n");
-					task_check_all(&tasks);
-					got_sigchld = 0;
-				}
-				goto retry;
+				case EAGAIN:
+					if(block_set(0, 1)){
+						perror("block()");
+						return NULL;
+					}
+					clearerr(stdin);
+					goto retry;
+
+				default:
+					break;
 			}
 
 			perror("ush: read()");
 		}else
-			puts("exit");
+			putchar('\n');
 		free(buffer);
 		return NULL;
 	}
