@@ -7,26 +7,20 @@
 #include "term.h"
 #include "config.h"
 
-#ifdef USH_DEBUG
-# define TERM_DEBUG
-#else
-# undef TERM_DEBUG
-#endif
+struct termios attr_orig, attr_ush;
 
-struct termios attr_orig;
+void term_raw(int);
 
 int term_init(void)
 {
 	int pgid = getpgrp();
 
-#ifdef TERM_DEBUG
-	fprintf(stderr, "tcgetattr(stdin, ...)\n");
-#endif
-
 	if(tcgetattr(STDIN_FILENO, &attr_orig)){
 		perror("tcgetattr()");
 		return 1;
 	}
+
+	memcpy(&attr_ush, &attr_orig, sizeof attr_ush);
 
 	while(tcgetpgrp(STDIN_FILENO) != (pgid = getpgrp()))
 		kill(-pgid, SIGTTIN);
@@ -48,14 +42,14 @@ int term_init(void)
 
 	tcsetpgrp(STDIN_FILENO, pgid);
 
+	term_raw(1);
+
 	return 0;
 }
 
 int term_term(void)
 {
-#ifdef TERM_DEBUG
-	fprintf(stderr, "tcsetattr(stdin, TCSAFLUSH, ...)\n");
-#endif
+	term_raw(0);
 
 	if(tcsetattr(STDIN_FILENO, TCSAFLUSH, &attr_orig)){
 		perror("tcsetattr()");
@@ -84,8 +78,27 @@ void term_attr_orig(void)
 	term_attr_set(&attr_orig);
 }
 
+void term_attr_ush(void)
+{
+	term_attr_set(&attr_ush);
+}
+
 void term_give_to(pid_t gid)
 {
 	if(tcsetpgrp(STDIN_FILENO, gid))
 		perror("term_give_to()");
+}
+
+void term_raw(int on)
+{
+#ifndef READ_SIMPLE
+	if(on){
+		attr_ush.c_cc[VMIN]  = sizeof(char);
+		attr_ush.c_lflag    &= ~(ICANON | ECHO);
+	}else{
+		attr_ush.c_cc[VMIN]  = 0;
+		attr_ush.c_lflag    |= ICANON | ECHO;
+	}
+	term_attr_ush();
+#endif
 }

@@ -37,7 +37,6 @@ struct task *task_new(char ****argvpp)
 	memset(thistask, 0, sizeof *thistask);
 
 	thistask->state = TASK_BEGIN;
-	thistask->tconf_got = 0;
 
 	for(; *argvpp; argvpp++){
 		struct job *j = job_new(*argvpp, jid);

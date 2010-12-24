@@ -10,6 +10,10 @@ struct job
 	enum { JOB_BEGIN, JOB_RUNNING, JOB_COMPLETE, JOB_MOVED_ON } state;
 	struct proc *proc; /* list */
 
+	int tconf_got;
+	struct termios tconf;
+
+
 	struct job *next; /* link-a-list helper */
 };
 

@@ -7,9 +7,6 @@ struct task
 	struct job *jobs;
 	enum { TASK_BEGIN, TASK_RUNNING, TASK_COMPLETE } state;
 
-	int tconf_got;
-	struct termios tconf;
-
 	struct task *next;
 };
 

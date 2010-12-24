@@ -75,7 +75,7 @@ int job_start(struct job *j)
 		}else
 			p->out = STDOUT_FILENO; /* TODO */
 
-		/* TODO: cd, fg */
+		/* TODO: cd, fg, rehash */
 
 		switch(p->pid = fork()){
 			case 0:
@@ -149,6 +149,11 @@ int job_wait(struct job *j, int async)
 
 rewait:
 
+	if(j->tconf_got)
+		term_attr_set(&j->tconf);
+	else
+		term_attr_orig();
+
 #ifdef JOB_WAIT_CHANGE_GROUP
 	term_give_to(j->gid);
 	/*setpgid(getpid(), j->gid);*/
@@ -163,6 +168,10 @@ rewait:
 	/*setpgid(getpid(), orig_pgid);*/
 	errno = save;
 #endif
+
+	term_attr_get(&j->tconf);
+	j->tconf_got = 1;
+	term_attr_ush();
 
 
 	if(pid == -1){

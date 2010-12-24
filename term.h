@@ -6,6 +6,7 @@ int term_term(void);
 
 void term_give_to(pid_t);
 
+void term_attr_ush(void);
 void term_attr_orig(void);
 
 void term_attr_set(struct termios *t);
