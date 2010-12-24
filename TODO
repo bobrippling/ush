@@ -1,8 +1,8 @@
-job background stuff
+fix background tasks not being rm'd
 
 readline: tab completion
 parse:    $varname, *, etc
 
 history
 
-cd, builtin echo, ls, ps and kill
+cd and fg
