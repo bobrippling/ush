@@ -123,35 +123,39 @@ int task_wait(struct task **tasks, struct task *t, int async)
 	struct proc *p;
 	struct job *j;
 
-	for(j = t->jobs; j; j = j->next){
-		job_wait(j, async);
+	for(j = t->jobs; j; j = j->next)
+		while(!job_complete(j)){
+			/* TODO: term_give_to() */
+			job_wait(j, async);
 
-		if(async && j->state == JOB_RUNNING)
-			/* no change */
-			return 0;
-		else if(j->state == JOB_COMPLETE){
-			/* changed to complete, next job in the list */
-			if(j->next){
-				job_start(j->next);
-				continue;
-			}else{
-				task_rm(tasks, t);
-				return 1;
-			}
-		}
-
-		/*
-		 * check for a stopped proc
-		 * if we find one, it's
-		 * been ^Z'd, stop other procs and return
-		 */
-		for(p = j->proc; p; p = p->next)
-			if(p->state == PROC_STOP){
-				job_sig(j, SIGSTOP);
+			if(async && j->state == JOB_RUNNING)
+				/* no change */
 				return 0;
-				/* don't attempt to move onto any other jobs */
+			else if(j->state == JOB_COMPLETE){
+				/* changed to complete, next job in the list */
+				if(j->next){
+					job_start(j->next);
+					if(async)
+						return 0;
+					continue;
+				}else{
+					task_rm(tasks, t);
+					return 1;
+				}
 			}
-	}
+
+			/*
+			* check for a stopped proc
+			* if we find one, it's
+			* been ^Z'd, stop other procs and return
+			*/
+			for(p = j->proc; p; p = p->next)
+				if(p->state == PROC_STOP){
+					job_sig(j, SIGSTOP);
+					return 0;
+					/* don't attempt to move onto any other jobs */
+				}
+		}
 
 	return 0;
 }
@@ -183,7 +187,7 @@ void task_rm(struct task **tasks, struct task *t)
 		}else
 			prev = iter;
 
-	fprintf(stderr, "task_rm(): %s not found\n", t->cmd);
+	fprintf(stderr, "task_rm(): \"%s\" not found\n", t->cmd);
 }
 
 void task_free(struct task *t)

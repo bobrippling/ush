@@ -204,18 +204,8 @@ rewait:
 			proc_still_running = 1;
 
 
-	if(!proc_still_running){
-		for(p = j->proc; p; p = p->next)
-			if(p->state != PROC_FIN){
-				fprintf(stderr, "job_wait(): proc_still_running = 0, but \"%s\" running\n",
-						*p->argv);
-				return 0;
-			}else
-				fprintf(stderr, "job_wait(): \"%s\" PROC_FIN'd\n", *p->argv);
-
-		fprintf(stderr, "job_wait(): job \"%s\" finito\n", j->cmd);
+	if(!proc_still_running)
 		j->state = JOB_COMPLETE;
-	}
 	return 0;
 }
 
@@ -241,6 +231,15 @@ const char *job_state_name(struct job *j)
 		case JOB_MOVED_ON: return "complete (moved on)";
 	}
 	return NULL;
+}
+
+int job_complete(struct job *j)
+{
+	struct proc *p;
+	for(p = j->proc; p; p = p->next)
+		if(p->state != PROC_FIN)
+			return 0;
+	return 1;
 }
 
 char *job_desc(struct job *j)

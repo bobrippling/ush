@@ -15,11 +15,11 @@ struct job
 
 struct job *job_new(char ***argvpp, int jid);
 
-int         job_start(   struct job *);
-int         job_wait(    struct job *, int async);
-int         job_wait_all(struct job *j, struct job **jobs, int async);
+int         job_start(    struct job *);
+int         job_wait(     struct job *, int async);
+int         job_wait_all( struct job *j, struct job **jobs, int async);
 int         job_check_all(struct job **jobs);
-int         job_fully_complete(struct job *);
+int         job_complete( struct job *);
 
 void        job_free(struct job *j);
 

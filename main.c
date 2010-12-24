@@ -71,10 +71,8 @@ void shell_login()
 
 void sigh(int sig)
 {
-	if(sig == SIGCHLD){
-		fputs("GOT_SIGCHLD\n", stderr);
+	if(sig == SIGCHLD)
 		got_sigchld = 1;
-	}
 }
 
 int main(int argc, const char **argv)
