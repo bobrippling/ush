@@ -15,7 +15,7 @@
 #include "proc.h"
 #include "job.h"
 #include "task.h"
-
+#include "path.h"
 #include "readline.h"
 #include "term.h"
 #include "config.h"
@@ -112,12 +112,16 @@ int main(int argc, const char **argv)
 		return 1;
 	}
 
+	path_init();
+
 	if(login && shell_login())
 		return 1;
 	if(shell_rc())
 		return 1;
 
 	ret = lewp();
+
+	path_term();
 	term_term();
 
 	return ret;

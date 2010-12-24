@@ -3,7 +3,7 @@ SHELLS  = /etc/shells
 BINPATH = ${PREFIX}/bin/ush
 
 ush: job.o main.o proc.o util.o readline.o term.o parse.o \
-		builtin.o task.o
+		builtin.o task.o path.o complete.o esc.o
 	${CC} ${CFLAGS} -o $@ $^
 
 clean:
@@ -19,12 +19,17 @@ uninstall:
 
 .PHONY: clean install uninstall
 
-builtin.o: builtin.c proc.h job.h task.h builtin.h term.h
+builtin.o: builtin.c proc.h job.h task.h builtin.h term.h esc.h
+complete.o: complete.c util.h complete.h
+esc.o: esc.c esc.h
 job.o: job.c util.h proc.h job.h term.h config.h
-main.o: main.c util.h proc.h job.h task.h readline.h term.h config.h
+main.o: main.c util.h proc.h job.h task.h path.h readline.h term.h \
+ config.h
 parse.o: parse.c parse.h util.h config.h
+path.o: path.c util.h path.h
 proc.o: proc.c util.h proc.h builtin.h config.h
-readline.o: readline.c readline.h parse.h util.h task.h config.h
-task.o: task.c util.h proc.h job.h task.h
+readline.o: readline.c complete.h readline.h parse.h util.h task.h \
+ config.h
+task.o: task.c term.h util.h proc.h job.h task.h
 term.o: term.c term.h config.h
 util.o: util.c config.h

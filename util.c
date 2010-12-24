@@ -1,11 +1,14 @@
 #include <stdlib.h>
 #include <setjmp.h>
 #include <string.h>
+#include <stdarg.h>
 
 #include <unistd.h>
 #include <fcntl.h>
 
 #include "config.h"
+
+int vsnprintf(char *str, size_t size, const char *format, va_list ap);
 
 extern jmp_buf allocerr;
 
@@ -30,6 +33,28 @@ char *ustrdup(const char *s)
 	char *d = umalloc(strlen(s) + 1);
 	strcpy(d, s);
 	return d;
+}
+
+char *ustrdup_printf(const char *fmt, ...)
+{
+	char *buffer = NULL;
+	int siz = strlen(fmt);
+	va_list l;
+
+	do{
+		int ret;
+
+		buffer = urealloc(buffer, siz);
+
+		va_start(l, fmt);
+		ret = vsnprintf(buffer, siz, fmt, l);
+		va_end(l);
+
+		if(ret < siz)
+			break;
+		siz += 32;
+	}while(1);
+	return buffer;
 }
 
 char *ustrndup(const char *s, size_t n)
@@ -116,4 +141,24 @@ int block_set(int fd, int block)
 int block_get(int fd)
 {
 	return !!(fcntl(fd, F_GETFL) & O_NONBLOCK);
+}
+
+unsigned int ugetuid()
+{
+	static int got = 0, uid;
+	if(!got){
+		got = 1;
+		uid = getuid();
+	}
+	return uid;
+}
+
+unsigned int ugetgid()
+{
+	static int got = 0, gid;
+	if(!got){
+		got = 1;
+		gid = getgid();
+	}
+	return gid;
 }

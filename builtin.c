@@ -17,6 +17,7 @@
 #include "task.h"
 #include "builtin.h"
 #include "term.h"
+#include "esc.h"
 
 #define LEN(a) (sizeof(a) / sizeof(a[0]))
 
@@ -67,7 +68,8 @@ BUILTIN(reset)
 {
 	if(argc)
 		fprintf(stderr, "%s: ignoring args\n", *argv);
-	term_attr_orig();
+	esc_reset();
+	term_attr_ush();
 	return 0;
 }
 
