@@ -56,48 +56,14 @@ struct task *task_new(char ****argvpp)
 
 int task_start(struct task *t)
 {
+	t->state = TASK_RUNNING;
 	return job_start(t->jobs);
 }
 
-#if 0
-int job_next(struct job **jobs, struct job *j)
-{
-	/*
-	 * start the next job in the job's list
-	 * or rm the job if the last has completed
-	 */
-	struct job *iter;
-
-	for(; iter; iter = iter->jobnext)
-		if(iter->state == JOB_BEGIN){
-			job_start(iter);
-			return 0;
-		}
-
-	if(job_fully_complete(j)){
-		struct job  *jlast;
-		struct proc *plast;
-
-		for(jlast =           j; jlast->jobnext; jlast = jlast->jobnext);
-		for(plast = jlast->proc;    plast->next; plast = plast->next   );
-
-		if(plast->exit_sig)
-			printf("\"%s\": signal %d (SIG%s)\n",
-					*plast->argv, plast->exit_sig, usignam(plast->exit_sig));
-		else
-			printf("\"%s\": %d\n", *plast->argv, plast->exit_code);
-
-		job_rm(jobs, j);
-		return 1;
-	}
-
-	return 0;
-}
-#endif
-
-
 int task_check_all(struct task **tasks)
 {
+	/* return 1 if we handled a task */
+	int ret = 0;
 	struct task *t;
 
 restart:
@@ -105,19 +71,22 @@ restart:
 		switch(t->state){
 			case TASK_COMPLETE:
 				task_rm(tasks, t);
+				ret = 1;
 				goto restart;
 
 			case TASK_RUNNING:
 				/* asyncronously check for completion */
-				if(task_wait(tasks, t, 1))
+				if(task_wait(tasks, t, 1)){
+					ret = 1;
 					goto restart;
+				}
 				break;
 
 			case TASK_BEGIN:
 				break;
 		}
 
-	return 0;
+	return ret;
 }
 
 int task_wait(struct task **tasks, struct task *t, int async)

@@ -58,7 +58,7 @@ int lewp()
 			perror("task_start()");
 
 		task_wait(&tasks, t, 0);
-		task_check_all(&tasks);
+		while(task_check_all(&tasks));
 	}while(1);
 
 	return 0;
