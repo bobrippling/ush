@@ -12,6 +12,7 @@
 
 void task_rm(struct task **tasks, struct task *t);
 void task_free(struct task *t);
+char *task_desc(struct task *t);
 
 
 struct task *task_new(char ****argvpp)
@@ -34,7 +35,6 @@ struct task *task_new(char ****argvpp)
 	thistask = umalloc(sizeof *thistask);
 	memset(thistask, 0, sizeof *thistask);
 
-	thistask->cmd = ustrdup("TODO: task cmd");
 	thistask->state = TASK_BEGIN;
 	thistask->tconf_got = 0;
 
@@ -48,6 +48,8 @@ struct task *task_new(char ****argvpp)
 		jprev = j;
 	}
 	jprev->next = NULL;
+
+	thistask->cmd = task_desc(thistask);
 
 	return thistask;
 }
@@ -171,6 +173,27 @@ int task_sig(struct task *t, int sig)
 	return ret;
 }
 
+char *task_desc(struct task *t)
+{
+	char *ret;
+	int len = 1;
+	struct job *j;
+
+	for(j = t->jobs; j; j = j->next)
+		len += strlen(j->cmd) + 2; /* "; " */
+
+	ret = umalloc(len);
+	*ret = '\0';
+
+	for(j = t->jobs; j; j = j->next){
+		strcat(ret, j->cmd);
+		if(j->next)
+			strcat(ret, "; ");
+	}
+
+	return ret;
+}
+
 void task_rm(struct task **tasks, struct task *t)
 {
 	struct task *iter, *prev = NULL;
@@ -198,4 +221,14 @@ void task_free(struct task *t)
 
 	for(j = t->jobs; j; j2 = j, j = j->next, job_free(j2));
 	free(t);
+}
+
+const char *task_state_name(struct task *t)
+{
+	switch(t->state){
+		case TASK_BEGIN:    return "init";
+		case TASK_RUNNING:  return "running";
+		case TASK_COMPLETE: return "complete";
+	}
+	return NULL;
 }

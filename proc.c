@@ -86,3 +86,14 @@ char *proc_desc(struct proc *p)
 
 	return ret;
 }
+
+const char *proc_state_name(struct proc *p)
+{
+	switch(p->state){
+		case PROC_SPAWN: return "W";
+		case PROC_RUN:   return "R";
+		case PROC_STOP:  return "T";
+		case PROC_FIN:   return "-";
+	}
+	return NULL;
+}

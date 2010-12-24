@@ -23,4 +23,6 @@ int          task_check_all(struct task **);
 int          task_sig(struct task *, int);
 void         task_fg(struct task *);
 
+const char  *task_state_name(struct task *);
+
 #endif

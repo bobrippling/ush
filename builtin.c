@@ -338,30 +338,23 @@ BUILTIN(jobs)
 {
 	extern struct task *tasks;
 	struct task *t;
+	const pid_t mypid = getpid();
 
 	if(argc > 1)
 		fprintf(stderr, "%s: ignoring arguments\n", *argv);
 
 	for(t = tasks; t; t = t->next){
 		struct job *j;
-		printf("task %s\n", t->cmd);
+		printf("task %d (\"%s\") %s\n", t->jobs->job_id, t->cmd, task_state_name(t));
 
 		for(j = t->jobs; j; j = j->next){
 			struct proc *p;
 
 			printf("\tjob \"%s\": %s\n", j->cmd, job_state_name(j));
 
-			for(p = j->proc; p; p = p->next){
-				printf("\t\tproc %d ", p->pid);
-				switch(p->state){
-					case PROC_SPAWN: /* probably us */
-					case PROC_RUN:   printf("RS (running or sleeping)"); break;
-					case PROC_STOP:  printf("T (stopped)");              break;
-					case PROC_FIN:   printf("- (finished)");             break;
-				}
-				printf(" (\"%s\")%s\n",
-						*p->argv, p->pid == getpid() ? " (ME)" : "");
-			}
+			for(p = j->proc; p; p = p->next)
+				printf("\t\t%d \"%s\" %s%s\n", p->pid, *p->argv,
+						proc_state_name(p), p->pid == mypid ? " (ME)":"");
 		}
 	}
 
