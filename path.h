@@ -5,4 +5,12 @@ void path_init(void);
 void path_rehash(void);
 void path_term(void);
 
+struct exe
+{
+	char *path;
+	char *basename;
+
+	struct exe *next;
+};
+
 #endif

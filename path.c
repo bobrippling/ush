@@ -8,14 +8,7 @@
 #include "util.h"
 #include "path.h"
 
-struct exe
-{
-	char *path;
-	char *basename;
-
-	struct exe *next;
-} *exes = NULL;
-
+struct exe *exes = NULL;
 
 static int can_exe(struct stat *st)
 {
