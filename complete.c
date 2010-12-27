@@ -56,6 +56,7 @@ reprompt:
 				break;
 
 			case '\t':
+				buffer[index] = '\0';
 				complete(&buffer, &siz, &index, &reprompt);
 				if(reprompt){
 					reprompt = 0;

@@ -95,8 +95,6 @@ int main(int argc, const char **argv)
 
 #define ARG(x) !strcmp(argv[i], "-" x)
 
-	setbuf(stdout, NULL);
-
 	for(i = 1; i < argc; i++)
 		if(ARG("l"))
 			login = 1;
