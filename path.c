@@ -25,6 +25,16 @@ static int can_exe(struct stat *st)
 #undef m
 }
 
+int path_has(const char *basename)
+{
+	struct exe *iter;
+
+	for(iter = exes; iter; iter = iter->next)
+		if(!strcmp(iter->basename, basename))
+			return 1;
+	return 0;
+}
+
 void path_init()
 {
 	const char *path = getenv("PATH");
@@ -45,23 +55,25 @@ void path_init()
 			struct dirent *ent;
 
 			while((ent = readdir(d))){
-				char *path = ustrdup_printf("%s/%s", iter, ent->d_name);
-				struct stat st;
+				if(!path_has(ent->d_name)){
+					char *path = ustrdup_printf("%s/%s", iter, ent->d_name);
+					struct stat st;
 
-				if(!stat(path, &st) && can_exe(&st)){
-					struct exe *new;
+					if(!stat(path, &st) && can_exe(&st)){
+						struct exe *new;
 
-					*pexe = new = umalloc(sizeof *new);
-					pexe = &new->next;
+						*pexe = new = umalloc(sizeof *new);
+						pexe = &new->next;
 
-					new->next = NULL;
-					new->path = path;
-					if(!(new->basename = strrchr(new->path, '/')))
-						new->basename = new->path;
-					else
-						new->basename++;
-				}else
-					free(path);
+						new->next = NULL;
+						new->path = path;
+						if(!(new->basename = strrchr(new->path, '/')))
+							new->basename = new->path;
+						else
+							new->basename++;
+					}else
+						free(path);
+				}
 			}
 			closedir(d);
 		}
