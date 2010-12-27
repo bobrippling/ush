@@ -29,6 +29,7 @@ BUILTIN(kill);
 BUILTIN(bg);
 BUILTIN(jobs);
 BUILTIN(reset);
+BUILTIN(colon);
 
 static struct builtin
 {
@@ -41,7 +42,8 @@ static struct builtin
 	STRUCT_BUILTIN(ps),
 	STRUCT_BUILTIN(kill),
 	STRUCT_BUILTIN(bg),
-	STRUCT_BUILTIN(jobs)
+	STRUCT_BUILTIN(jobs),
+	{ ":", builtin_colon }
 #undef STRUCT_BUILTIN
 };
 
@@ -360,5 +362,12 @@ BUILTIN(jobs)
 		}
 	}
 
+	return 0;
+}
+
+BUILTIN(colon)
+{
+	(void)argc;
+	(void)argv;
 	return 0;
 }
