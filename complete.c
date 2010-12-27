@@ -118,6 +118,7 @@ void complete_exe(char **bptr, unsigned int *sizptr, unsigned int *idxptr, int *
 		}else{
 			int j;
 			*reprompt = 1;
+			putchar('\n');
 			for(j = 0; j < i; j++)
 				printf("%s\n", ents[j]);
 		}
