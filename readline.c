@@ -23,9 +23,9 @@ static char *prompt_and_line(void);
 static char *uread_and_comp(void);
 
 
-char ****ureadline(int *eof)
+struct parsed *ureadline(int *eof)
 {
-	char ****ret;
+	struct parsed *ret;
 	char *buffer, *nl;
 
 	*eof = 0;

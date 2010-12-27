@@ -14,6 +14,7 @@
 
 #include "proc.h"
 #include "job.h"
+#include "parse.h"
 #include "task.h"
 #include "builtin.h"
 #include "term.h"

@@ -9,6 +9,7 @@ struct job
 	int job_id;
 	enum { JOB_BEGIN, JOB_RUNNING, JOB_COMPLETE, JOB_MOVED_ON } state;
 	struct proc *proc; /* list */
+	struct redir *redir;
 
 	int tconf_got;
 	struct termios tconf;
@@ -17,7 +18,7 @@ struct job
 	struct job *next; /* link-a-list helper */
 };
 
-struct job *job_new(char ***argvpp, int jid);
+struct job *job_new(char ***argvpp, int jid, struct redir *);
 
 int         job_start(    struct job *);
 int         job_wait(     struct job *, int async);

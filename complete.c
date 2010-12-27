@@ -72,6 +72,7 @@ void complete_exe(char **bptr, unsigned int *sizptr, unsigned int *idxptr, int *
 	(void)sizptr;
 
 	for(iter = exes; iter; iter = iter->next)
+		/* FIXME: complete_best_match() esque */
 		if(!strncmp(iter->basename, buffer, len)){
 			if(multi){
 				printf("%s\n", iter->basename);

@@ -100,25 +100,24 @@ int token_init()
 	return 0;
 }
 
-char ****parse(char *in)
+struct parsed *parse(char *in)
 {
-	char ****argvpp = umalloc(2 * sizeof(*argvpp));
-	int argvp_idx = 0, argvpp_idx = 0;
-#define argvp (argvpp[argvpp_idx])
+	struct parsed *ret = umalloc(sizeof *ret), *prog = ret;
+	char ***argvp;
+	int argvp_idx = 0;
 #define argv  (argvp[argvp_idx])
 
-	argvpp[argvpp_idx + 1] = NULL;
+	ret->next = NULL;
+	ret->redir = NULL;
 
 	buffer = in;
-
 	if(token_init()){
-		free(argvpp);
+		free(ret);
 		return NULL;
 	}
 
 	argvp = umalloc(2 * sizeof(*argvp));
 	argvp[argvp_idx + 1] = NULL;
-
 
 	do{
 		argv = umalloc(2 * sizeof(*argv));
@@ -138,6 +137,9 @@ char ****parse(char *in)
 			}
 
 			if(current_token == TOKEN_EOL){
+				prog->argvp = argvp;
+				prog->redir = NULL;
+				prog->next  = NULL;
 				break;
 			}else if(current_token == TOKEN_PIPE){
 				nexttoken();
@@ -146,9 +148,10 @@ char ****parse(char *in)
 				argvp[argvp_idx + 1] = NULL;
 			}else if(current_token == TOKEN_SEMI_COLON){
 				nexttoken();
-				argvpp_idx++;
-				argvpp = urealloc(argvpp, (argvpp_idx + 2) * sizeof(*argvpp));
-				argvpp[argvpp_idx + 1] = NULL;
+				prog->next = umalloc(sizeof *prog->next);
+				prog->argvp = argvp;
+				prog->redir = NULL;
+				prog = prog->next;
 
 				argvp_idx = 0;
 				argvp  = umalloc(2 * sizeof(*argvp));
@@ -163,5 +166,5 @@ unexpected:
 		}
 	}while(1);
 
-	return argvpp;
+	return ret;
 }

@@ -9,6 +9,7 @@
 #include "util.h"
 #include "proc.h"
 #include "job.h"
+#include "parse.h"
 #include "task.h"
 
 void task_rm(struct task **tasks, struct task *t);
@@ -16,11 +17,12 @@ void task_free(struct task *t);
 char *task_desc(struct task *t);
 
 
-struct task *task_new(char ****argvpp)
+struct task *task_new(struct parsed *prog)
 {
 	extern struct task *tasks;
 	struct task *t, *thistask;
 	struct job *jprev = NULL;
+	struct parsed *iter;
 	int jid = 1;
 
 	for(t = tasks; t; t = t->next){
@@ -38,8 +40,8 @@ struct task *task_new(char ****argvpp)
 
 	thistask->state = TASK_BEGIN;
 
-	for(; *argvpp; argvpp++){
-		struct job *j = job_new(*argvpp, jid);
+	for(iter = prog; iter; iter = iter->next){
+		struct job *j = job_new(iter->argvp, jid, iter->redir);
 
 		if(jprev)
 			jprev->next = j;

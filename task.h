@@ -10,7 +10,7 @@ struct task
 	struct task *next;
 };
 
-struct task *task_new(char ****argvpp);
+struct task *task_new(struct parsed *);
 
 int          task_start(struct task *);
 

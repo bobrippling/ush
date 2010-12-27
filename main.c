@@ -6,15 +6,10 @@
 #include <termios.h>
 #include <stdlib.h>
 
-#undef ARGV_PRINT
-
-#ifdef ARGV_PRINT
-# include <stdlib.h>
-#endif
-
 #include "util.h"
 #include "proc.h"
 #include "job.h"
+#include "parse.h"
 #include "task.h"
 #include "path.h"
 #include "readline.h"
@@ -28,34 +23,27 @@ struct task *tasks = NULL;
 
 int lewp()
 {
-	char ****argvpp = NULL;
+	struct parsed *prog = NULL;
 
 	do{
 		struct task *t;
 		int eof;
 
-		argvpp = ureadline(&eof);
+		prog = ureadline(&eof);
 		if(eof)
 			/* FIXME: kill children */
 			break;
-		else if(!argvpp)
+		else if(!prog)
 			continue;
 
-#ifdef ARGV_PRINT
-		{
-			int i, j, k;
-			for(i = 0; argvpp[i]; i++)
-				for(j = 0; argvpp[i][j]; j++)
-					for(k = 0; argvpp[i][j][k]; k++)
-						printf("argvpp[%d][%d][%d]: \"%s\"\n", i, j, k, argvpp[i][j][k]);
-		}
-#endif
-
-		t = task_new(argvpp);
+		t = task_new(prog);
 		t->next = tasks;
 		tasks = t;
 
-		free(argvpp); /* the sub char ***s are held in the task structs */
+		{
+			struct parsed *iter, *del;
+			for(iter = prog; iter; del = iter, iter = iter->next, free(del));
+		}
 
 		if(task_start(t))
 			perror("task_start()");

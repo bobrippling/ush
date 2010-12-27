@@ -6,11 +6,14 @@
 #include <errno.h>
 #include <string.h>
 #include <termios.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include "util.h"
 #include "proc.h"
 #include "job.h"
 #include "term.h"
+#include "parse.h"
 #include "config.h"
 
 #ifdef USH_DEBUG
@@ -20,7 +23,7 @@
 #endif
 
 /** create a struct proc for each argv */
-struct job *job_new(char ***argvp, int jid)
+struct job *job_new(char ***argvp, int jid, struct redir *redir)
 {
 	struct job *j;
 	struct proc **tail;
@@ -30,6 +33,7 @@ struct job *job_new(char ***argvp, int jid)
 
 	j->cmd    = ustrdup_argvp(argvp);
 	j->argvp  = argvp;
+	j->redir  = redir;
 	j->job_id = jid;
 	j->state  = JOB_BEGIN;
 
@@ -60,26 +64,9 @@ void job_close_fds(struct job *j, struct proc *pbreak)
 int job_start(struct job *j)
 {
 	struct proc *p;
+	struct redir *redir_iter;
 	int pipey[2] = { -1, -1 };
 
-	j->proc->in = STDIN_FILENO; /* TODO */
-	for(p = j->proc; p; p = p->next){
-		p->err = STDERR_FILENO; /* TODO */
-		if(p->next){
-			if(pipe(pipey) < 0){
-				perror("pipe()");
-				goto bail;
-			}
-			p->out = pipey[1];
-			p->next->in = pipey[0];
-		}else
-			p->out = STDOUT_FILENO; /* TODO */
-
-		/* TODO: cd, fg, rehash */
-
-		switch(p->pid = fork()){
-			case 0:
-				p->pid = getpid();
 #define REDIR(a, b) \
 					do{ \
 						if(a != b){ \
@@ -90,6 +77,42 @@ int job_start(struct job *j)
 								perror("close()"); \
 						} \
 					}while(0)
+
+	for(redir_iter = j->redir; redir_iter; redir_iter = redir_iter->next){
+		int fd;
+
+		if(redir_iter->fname){
+			fd = open(redir_iter->fname, O_WRONLY | O_CREAT | O_TRUNC); /* FIXME: only out for now */
+			if(fd == -1){
+				fprintf(stderr, "ush: open %s: %s\n", redir_iter->fname, strerror(errno));
+				/* FIXME: close all other fds */
+				return 1;
+			}
+		}else
+			fd = redir_iter->fd_out;
+
+		fprintf(stderr, "job_start(): REDIR(%d, %d)\n", fd, redir_iter->fd_in);
+		REDIR(fd, redir_iter->fd_in);
+	}
+
+	j->proc->in = STDIN_FILENO;
+	for(p = j->proc; p; p = p->next){
+		p->err = STDERR_FILENO;
+		if(p->next){
+			if(pipe(pipey) < 0){
+				perror("pipe()");
+				goto bail;
+			}
+			p->out = pipey[1];
+			p->next->in = pipey[0];
+		}else
+			p->out = STDOUT_FILENO;
+
+		/* TODO: cd, fg, rehash */
+
+		switch(p->pid = fork()){
+			case 0:
+				p->pid = getpid();
 				REDIR(p->in,   STDIN_FILENO);
 				REDIR(p->out, STDOUT_FILENO);
 				REDIR(p->err, STDERR_FILENO);
