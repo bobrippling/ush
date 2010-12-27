@@ -61,54 +61,18 @@ void complete(char **bptr, unsigned int *sizptr, unsigned int *idxptr, int *repr
 		complete_arg(bptr, sizptr, idxptr, i + 1, reprompt);
 }
 
-void complete_exe(char **bptr, unsigned int *sizptr, unsigned int *idxptr, int *reprompt)
-{
-	extern struct exe *exes;
-	struct exe *iter, *first = NULL;
-	const int len = *idxptr;
-	char *buffer = *bptr;
-	int multi = 0;
-
-	(void)sizptr;
-
-	for(iter = exes; iter; iter = iter->next)
-		/* FIXME: complete_best_match() esque */
-		if(!strncmp(iter->basename, buffer, len)){
-			if(multi){
-				printf("%s\n", iter->basename);
-			}else if(first){
-				/* multiple possibilities, print them all */
-				multi = 1;
-				*reprompt = 1;
-				putchar('\n');
-				printf("%s\n", first->basename);
-				printf("%s\n", iter->basename);
-			}else
-				first = iter;
-		}
-
-	if(!multi){
-		if(first){
-			/* single match - fill line */
-			complete_to(first->basename, len, strlen(first->basename), bptr, sizptr, idxptr, ' ');
-		}else{
-			/* no match - do nothing? */
-		}
-	}
-}
-
 static int complete_filter(const struct dirent *ent)
 {
 	/* return ~0 to add */
 	return ent->d_name[0] != '.' && !strncmp(ent->d_name, global_basename, global_basename_len);
 }
 
-static int complete_best_match(struct dirent **ents, int nmatches, unsigned int *bestlen)
+static void complete_best_match(char **ents, int nmatches, unsigned int *bestlen)
 {
 	int minlen = INT_MAX, min = -1, i;
 
 	for(i = 0; i < nmatches; i++){
-		const int len = strlen(ents[i]->d_name);
+		const int len = strlen(ents[i]);
 
 		if(len < minlen){
 			minlen = len;
@@ -117,21 +81,49 @@ static int complete_best_match(struct dirent **ents, int nmatches, unsigned int 
 	}
 
 	for(i = 0; i < minlen; i++){
-		char c = ents[0]->d_name[i];
+		char c = ents[0][i];
 		int j;
 
 		for(j = 1; j < nmatches; j++)
-			if(ents[j]->d_name[i] != c){
-				*bestlen   = i;
-				return 0;
+			if(ents[j][i] != c){
+				*bestlen = i;
+				return;
 			}
 	}
 
-	if(i == minlen){
-		*bestlen = minlen;
-		return 0;
-	}else
-		return 1;
+	*bestlen = minlen;
+}
+
+void complete_exe(char **bptr, unsigned int *sizptr, unsigned int *idxptr, int *reprompt)
+{
+	extern struct exe *exes;
+	struct exe *iter;
+	char **ents = umalloc(path_count() * sizeof(char *));
+	char *buffer = *bptr;
+	int i;
+	const unsigned int len = *idxptr;
+	unsigned int bestlen;
+
+	for(i = 0, iter = exes; iter; iter = iter->next)
+		if(!strncmp(iter->basename, buffer, len))
+			ents[i++] = iter->basename;
+
+	if(i == 1)
+		complete_to(ents[0], strlen(buffer), strlen(ents[0]), bptr, sizptr, idxptr, ' ');
+	else{
+		complete_best_match(ents, i, &bestlen);
+
+		if(bestlen > strlen(buffer)){
+			complete_to(ents[0], strlen(buffer), bestlen, bptr, sizptr, idxptr, 0);
+		}else{
+			int j;
+			*reprompt = 1;
+			for(j = 0; j < i; j++)
+				printf("%s\n", ents[j]);
+		}
+	}
+
+	free(ents);
 }
 
 void complete_arg(char **bptr, unsigned int *sizptr, unsigned int *idxptr, unsigned int startidx, int *reprompt)
@@ -170,21 +162,28 @@ void complete_arg(char **bptr, unsigned int *sizptr, unsigned int *idxptr, unsig
 
 		default:
 		{
-			unsigned int bestmatchlen;
 			/* multiple */
+			unsigned int bestmatchlen;
+			char **ents = umalloc(nmatches * sizeof(char *));
+			int i;
 
-			if(!complete_best_match(list, nmatches, &bestmatchlen)){
-				if(global_basename_len == bestmatchlen){
-					/* already full, show them */
-					int i;
+			for(i = 0; i < nmatches; i++)
+				ents[i] = list[i]->d_name;
 
-					*reprompt = 1;
-					putchar('\n');
-					for(i = 0; i < nmatches; i++)
-						printf("%s\n", list[i]->d_name);
-				}else
-					complete_to(list[0]->d_name, global_basename_len, bestmatchlen, bptr, sizptr, idxptr, 0);
-			}
+			complete_best_match(ents, nmatches, &bestmatchlen);
+			free(ents);
+
+			if(global_basename_len == bestmatchlen){
+				/* already full, show them */
+				int i;
+
+				*reprompt = 1;
+				putchar('\n');
+				for(i = 0; i < nmatches; i++)
+					printf("%s\n", list[i]->d_name);
+			}else
+				complete_to(list[0]->d_name, global_basename_len, bestmatchlen, bptr, sizptr, idxptr, 0);
+
 			break;
 		}
 

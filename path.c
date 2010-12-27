@@ -9,6 +9,7 @@
 #include "path.h"
 
 struct exe *exes = NULL;
+int nexes = 0;
 
 static int can_exe(struct stat *st)
 {
@@ -35,6 +36,11 @@ int path_has(const char *basename)
 	return 0;
 }
 
+int path_count()
+{
+	return nexes;
+}
+
 void path_init()
 {
 	const char *path = getenv("PATH");
@@ -45,6 +51,7 @@ void path_init()
 		path = "/sbin:/bin:/usr/sbin:/usr/bin";
 
 	dup = ustrdup(path);
+	nexes = 0;
 
 	for(iter = strtok(dup, ":"); iter; iter = strtok(NULL, ":")){
 		DIR *d;
@@ -71,6 +78,7 @@ void path_init()
 							new->basename = new->path;
 						else
 							new->basename++;
+						nexes++;
 					}else
 						free(path);
 				}
