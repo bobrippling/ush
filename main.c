@@ -4,6 +4,7 @@
 #include <sys/wait.h>
 #include <errno.h>
 #include <termios.h>
+#include <stdlib.h>
 
 #undef ARGV_PRINT
 
@@ -27,7 +28,7 @@ struct task *tasks = NULL;
 
 int lewp()
 {
-	char ****argvpp;
+	char ****argvpp = NULL;
 
 	do{
 		struct task *t;
@@ -53,6 +54,8 @@ int lewp()
 		t = task_new(argvpp);
 		t->next = tasks;
 		tasks = t;
+
+		free(argvpp); /* the sub char ***s are held in the task structs */
 
 		if(task_start(t))
 			perror("task_start()");

@@ -113,14 +113,14 @@ void ufree_argvp(char ***argvp)
 const char *usignam(unsigned int sig)
 {
 	static const char *names[] = {
-		NULL, "HUP", "INT", "QUIT",
-		"ILL", "TRAP", "ABRT", "BUS",
-		"FPE", "KILL", "USR1", "SEGV",
-		"USR2", "PIPE", "ALRM", "TERM",
-		"STKFLT", "CHLD", "CONT", "STOP",
-		"TSTP", "TTIN", "TTOU", "URG",
-		"XCPU", "XFSZ", "VTALRM", "PROF",
-		"WINCH", "POLL", "PWR", "SYS"
+		NULL,     "HUP",   "INT",    "QUIT",
+		"ILL",    "TRAP",  "ABRT",   "BUS",
+		"FPE",    "KILL",  "USR1",   "SEGV",
+		"USR2",   "PIPE",  "ALRM",   "TERM",
+		"STKFLT", "CHLD",  "CONT",   "STOP",
+		"TSTP",   "TTIN",  "TTOU",   "URG",
+		"XCPU",   "XFSZ",  "VTALRM", "PROF",
+		"WINCH",  "POLL",  "PWR",    "SYS"
 	};
 
 	if(sig < sizeof(names)/sizeof(names[0]))

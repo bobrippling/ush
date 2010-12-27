@@ -7,7 +7,7 @@ char *ustrdup(const char *s);
 char *ustrdup_printf(const char *, ...);
 char *ustrndup(const char *s, size_t);
 char *ustrdup_argvp(char ***argvpp);
-void  ufree_argvp(char ***argvp);
+void  ufree_argvp( char  ***argvp);
 
 const char *usignam(unsigned int);
 

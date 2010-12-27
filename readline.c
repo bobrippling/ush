@@ -41,10 +41,12 @@ char ****ureadline(int *eof)
 		*nl = '\0';
 
 	if(*buffer == '\0')
-		return NULL;
+		ret = NULL;
+	else
+		ret = parse(buffer);
 
-	ret = parse(buffer);
 	free(buffer);
+
 	return ret;
 }
 
@@ -65,15 +67,11 @@ retry:
 					}
 					clearerr(stdin);
 					goto retry;
-
-				default:
-					break;
 			}
 
 			perror("ush: read()");
 		}else
 			putchar('\n');
-		free(buffer);
 		return NULL;
 	}
 	return buffer;
@@ -101,9 +99,10 @@ reprompt:
 		int c = getchar();
 
 		if(c == CTRL_AND('D')){
-			if(index == 0)
+			if(index == 0){
+				free(buffer);
 				return NULL;
-			else
+			}else
 				c = '\t';
 		}
 
@@ -154,7 +153,7 @@ reprompt:
 				if(isprint(c))
 					putchar(c);
 				else
-					/* FIXME: handle non ctrl_and chars */
+					/* FIXME: handle non ctrl_and chars? */
 					printf("^%c", AND_CTRL(c));
 
 				if(index == siz){

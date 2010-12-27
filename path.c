@@ -78,6 +78,8 @@ void path_init()
 			closedir(d);
 		}
 	}
+
+	free(dup);
 }
 
 void path_rehash()

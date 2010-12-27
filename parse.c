@@ -111,8 +111,10 @@ char ****parse(char *in)
 
 	buffer = in;
 
-	if(token_init())
+	if(token_init()){
+		free(argvpp);
 		return NULL;
+	}
 
 	argvp = umalloc(2 * sizeof(*argvp));
 	argvp[argvp_idx + 1] = NULL;
