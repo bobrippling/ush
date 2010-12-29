@@ -19,6 +19,7 @@
 #include "builtin.h"
 #include "term.h"
 #include "esc.h"
+#include "path.h"
 
 #define LEN(a) (sizeof(a) / sizeof(a[0]))
 
@@ -31,6 +32,7 @@ BUILTIN(bg);
 BUILTIN(jobs);
 BUILTIN(reset);
 BUILTIN(colon);
+BUILTIN(which);
 
 static struct builtin
 {
@@ -44,6 +46,7 @@ static struct builtin
 	STRUCT_BUILTIN(kill),
 	STRUCT_BUILTIN(bg),
 	STRUCT_BUILTIN(jobs),
+	STRUCT_BUILTIN(which),
 	{ ":", builtin_colon }
 #undef STRUCT_BUILTIN
 };
@@ -370,5 +373,31 @@ BUILTIN(colon)
 {
 	(void)argc;
 	(void)argv;
+	return 0;
+}
+
+BUILTIN(which)
+{
+	extern struct exe *exes;
+	struct exe *e;
+	int i;
+
+	if(argc == 1){
+		fprintf(stderr, "Usage: %s command(s)...\n", *argv);
+		return 1;
+	}
+
+	for(i = 1; i < argc; i++){
+		int found = 0;
+		printf("%s: ", argv[i]);
+		for(e = exes; e; e = e->next)
+			if(!strcmp(argv[i], e->basename)){
+				found = 1;
+				printf("%s ", e->path);
+			}
+		if(!found)
+			printf("not found");
+		putchar('\n');
+	}
 	return 0;
 }
