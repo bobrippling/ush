@@ -98,33 +98,42 @@ void complete_exe(char **bptr, unsigned int *sizptr, unsigned int *idxptr, int *
 {
 	extern struct exe *exes;
 	struct exe *iter;
-	char **ents = umalloc(path_count() * sizeof(char *));
 	char *buffer = *bptr;
 	int i;
 	const unsigned int len = *idxptr;
 	unsigned int bestlen;
 
-	for(i = 0, iter = exes; iter; iter = iter->next)
-		if(!strncmp(iter->basename, buffer, len))
-			ents[i++] = iter->basename;
+	if(strchr(buffer, '/')){
+		complete_arg(bptr, sizptr, idxptr, 0, reprompt);
+	}else{
+		char **ents = umalloc(path_count() * sizeof(char *));
 
-	if(i == 1)
-		complete_to(ents[0], strlen(buffer), strlen(ents[0]), bptr, sizptr, idxptr, ' ');
-	else{
-		complete_best_match(ents, i, &bestlen);
+		for(i = 0, iter = exes; iter; iter = iter->next)
+			if(!strncmp(iter->basename, buffer, len))
+				ents[i++] = iter->basename;
 
-		if(bestlen > strlen(buffer)){
-			complete_to(ents[0], strlen(buffer), bestlen, bptr, sizptr, idxptr, 0);
-		}else{
-			int j;
-			*reprompt = 1;
-			putchar('\n');
-			for(j = 0; j < i; j++)
-				printf("%s\n", ents[j]);
+		switch(i){
+			case 1:
+				complete_to(ents[0], strlen(buffer), strlen(ents[0]), bptr, sizptr, idxptr, ' ');
+			case 0:
+				break;
+
+			default:
+				complete_best_match(ents, i, &bestlen);
+
+				if(bestlen > strlen(buffer)){
+					complete_to(ents[0], strlen(buffer), bestlen, bptr, sizptr, idxptr, 0);
+				}else{
+					int j;
+					*reprompt = 1;
+					putchar('\n');
+					for(j = 0; j < i; j++)
+						printf("%s\n", ents[j]);
+				}
 		}
-	}
 
-	free(ents);
+		free(ents);
+	}
 }
 
 void complete_arg(char **bptr, unsigned int *sizptr, unsigned int *idxptr, unsigned int startidx, int *reprompt)
