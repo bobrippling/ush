@@ -16,4 +16,6 @@ int block_get(int fd);
 
 unsigned int ugetuid(void), ugetgid(void);
 
+unsigned int null_array_len(void *);
+
 #endif

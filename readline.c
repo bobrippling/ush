@@ -12,6 +12,7 @@
 #include "task.h"
 #include "esc.h"
 #include "path.h"
+#include "glob.h"
 #include "config.h"
 
 #define BSIZ 256
@@ -44,9 +45,9 @@ struct parsed *ureadline(int *eof)
 		ret = NULL;
 	else
 		ret = parse(buffer);
-
 	free(buffer);
 
+	glob_expand(ret);
 	return ret;
 }
 

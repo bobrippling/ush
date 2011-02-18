@@ -3,7 +3,7 @@ SHELLS  = /etc/shells
 BINPATH = ${PREFIX}/bin/ush
 
 ush: job.o main.o proc.o util.o readline.o term.o parse.o \
-		builtin.o task.o path.o complete.o esc.o
+		builtin.o task.o path.o complete.o esc.o glob.o
 	${CC} ${CFLAGS} -o $@ $^
 
 clean:

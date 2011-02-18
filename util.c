@@ -162,3 +162,15 @@ unsigned int ugetgid()
 	}
 	return gid;
 }
+
+unsigned int null_array_len(void **p)
+{
+	unsigned int count = 0;
+
+	while(*p){
+		count++;
+		p++;
+	}
+
+	return count;
+}
