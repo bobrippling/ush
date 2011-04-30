@@ -5,4 +5,6 @@ parse:    $varname, *, etc
 
 history
 
-cd and fg
+cd, fg, rehash
+
+parsing: `echo hi | gr<TAB>` should complete to grep
