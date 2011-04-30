@@ -26,7 +26,8 @@ static int can_exe(struct stat *st)
 #undef m
 }
 
-int path_has(const char *basename)
+#ifdef ONLY_ONCE
+static int path_has(const char *basename)
 {
 	struct exe *iter;
 
@@ -35,6 +36,7 @@ int path_has(const char *basename)
 			return 1;
 	return 0;
 }
+#endif
 
 int path_count()
 {
@@ -62,7 +64,9 @@ void path_init()
 			struct dirent *ent;
 
 			while((ent = readdir(d))){
+#ifdef ONLY_ONCE
 				if(!path_has(ent->d_name)){
+#endif
 					char *path = ustrdup_printf("%s/%s", iter, ent->d_name);
 					struct stat st;
 
@@ -81,7 +85,9 @@ void path_init()
 						nexes++;
 					}else
 						free(path);
+#ifdef ONLY_ONCE
 				}
+#endif
 			}
 			closedir(d);
 		}

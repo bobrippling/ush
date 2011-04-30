@@ -162,7 +162,7 @@ BUILTIN(ps)
 				char *cmdln = malloc(strlen(ent->d_name) + 15);
 
 				/* TODO: show user */
-				sprintf(cmdln, "/proc/%d/cmdline", pid);
+				sprintf(cmdln, "/proc/%d/cmdline", pid); /* TODO: move this up to before the stat() */
 
 				f = fopen(cmdln, "r");
 				if(f){
@@ -380,7 +380,8 @@ BUILTIN(which)
 {
 	extern struct exe *exes;
 	struct exe *e;
-	int i;
+	int i, ret = 0;
+	int needspace = 0;
 
 	if(argc == 1){
 		fprintf(stderr, "Usage: %s command(s)...\n", *argv);
@@ -393,11 +394,14 @@ BUILTIN(which)
 		for(e = exes; e; e = e->next)
 			if(!strcmp(argv[i], e->basename)){
 				found = 1;
-				printf("%s ", e->path);
+				printf("%s%s", needspace ? " " : "", e->path);
+				needspace = 1;
 			}
-		if(!found)
+		if(!found){
 			printf("not found");
+			ret = 1;
+		}
 		putchar('\n');
 	}
-	return 0;
+	return ret;
 }
