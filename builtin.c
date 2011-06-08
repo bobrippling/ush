@@ -20,6 +20,7 @@
 #include "term.h"
 #include "esc.h"
 #include "path.h"
+#include "limit.h"
 
 #define LEN(a) (sizeof(a) / sizeof(a[0]))
 
@@ -33,6 +34,7 @@ BUILTIN(jobs);
 BUILTIN(reset);
 BUILTIN(colon);
 BUILTIN(which);
+BUILTIN(ulimit);
 
 static struct builtin
 {
@@ -47,6 +49,7 @@ static struct builtin
 	STRUCT_BUILTIN(bg),
 	STRUCT_BUILTIN(jobs),
 	STRUCT_BUILTIN(which),
+	STRUCT_BUILTIN(ulimit),
 	{ ":", builtin_colon }
 #undef STRUCT_BUILTIN
 };
@@ -404,4 +407,74 @@ BUILTIN(which)
 		putchar('\n');
 	}
 	return ret;
+}
+
+BUILTIN(ulimit)
+{
+	enum limit_type t;
+
+	if(argc >= 2 && limit_parse(argv[1], &t))
+		goto usage;
+
+	if(argc == 2){
+		/* get */
+		long val;
+		if(limit_get(t, &val)){
+			perror("getrlimit()");
+			return 1;
+		}else{
+			if(val == -1)
+				printf("%s: unlimited\n", argv[1]);
+			else
+				printf("%s: %ld\n", argv[1], val);
+			return 0;
+		}
+
+	}else if(argc == 3){
+		/* set */
+		long val;
+		char *end = NULL;
+
+		if(!strcmp(argv[2], "unlimited")){
+			val = -1;
+		}else{
+			val = strtol(argv[2], &end, 10);
+			if(*end)
+				goto usage;
+		}
+
+		if(limit_set(t, val)){
+			perror("setrlimit()");
+			return 1;
+		}
+		return 0;
+
+	}else if(argc <= 1){
+		int i;
+
+		for(i = 0; i < LIMIT_LAST - 1; i++){
+			long v = -1;
+			limit_get(i, &v);
+			printf("%s: ", limit_str(i));
+			if(v == -1)
+				puts("unlimited");
+			else
+				printf("%ld\n", v);
+		}
+
+		return 0;
+
+	}else{
+		int i;
+
+usage:
+		fprintf(stderr,
+				"Usage: %s [lim] [value]\n"
+				"limits:\n", *argv);
+
+		for(i = 0; i < LIMIT_LAST - 1; i++)
+			fprintf(stderr, "  %s\n", limit_str(i));
+
+		return 1;
+	}
 }
