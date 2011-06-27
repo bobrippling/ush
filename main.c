@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <termios.h>
 #include <stdlib.h>
+#include <sys/types.h>
 
 #include "util.h"
 #include "proc.h"
@@ -31,7 +32,7 @@ int lewp()
 
 		prog = ureadline(&eof);
 		if(eof)
-			/* FIXME: kill children */
+			/* FIXME: kill children - "jobs are running... better go and catch them!" */
 			break;
 		else if(!prog)
 			continue;
