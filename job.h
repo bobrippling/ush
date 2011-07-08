@@ -20,6 +20,8 @@ struct job
 
 struct job *job_new(char ***argvpp, int jid, struct redir *);
 
+struct proc *job_first_proc(struct job *);
+
 int         job_start(    struct job *);
 int         job_wait(     struct job *, int async);
 int         job_wait_all( struct job *j, struct job **jobs, int async);

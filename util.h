@@ -6,7 +6,8 @@ void *urealloc(void *, size_t);
 char *ustrdup(const char *s);
 char *ustrdup_printf(const char *, ...);
 char *ustrndup(const char *s, size_t);
-char *ustrdup_argvp(char ***argvpp);
+char *ustrdup_argv(const char **argv, const char *join);
+char *ustrdup_argvp(char ***argvpp); /* XXX: joins with "|" */
 void  ufree_argvp( char  ***argvp);
 
 const char *usignam(unsigned int);

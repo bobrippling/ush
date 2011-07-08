@@ -9,6 +9,17 @@
 #include "util.h"
 #include "glob.h"
 
+int ush_wordexp(char *s, wordexp_t *exp, int flags)
+{
+	int ret = wordexp(s, exp, flags);
+
+	if(ret == 0){
+		/* TODO: $(cmd), `cmd` */
+	}
+
+	return ret;
+}
+
 void glob_expand_argv(char ***pargv)
 {
 	char **argv;
@@ -22,7 +33,7 @@ void glob_expand_argv(char ***pargv)
 		wordexp_t exp;
 		int ret;
 
-		ret = wordexp(argv[i], &exp, WRDE_NOCMD /* FIXME */);
+		ret = ush_wordexp(argv[i], &exp, 0);
 
 		switch(ret){
 			case 0:
@@ -34,7 +45,6 @@ void glob_expand_argv(char ***pargv)
 
 				/*
 				 * move from argv[i + 1] to argv[i + 1 + exp.we_wordc - 1]
-				 * length is i because that's how far up it needs shifting?
 				 */
 				memmove(&argv[i + exp.we_wordc], &argv[i + 1], sizeof(*argv));
 
@@ -45,16 +55,11 @@ void glob_expand_argv(char ***pargv)
 			}
 			break;
 
-			case WRDE_BADCHAR:
-				/* Illegal occurrence of newline or one of |, &, ;, <, >, (, ), {, } */
-			case WRDE_BADVAL:
-				/* An undefined shell variable was referenced, and the WRDE_UNDEF flag told us to consider this an error*/
-			case WRDE_CMDSUB:
-				/* Command substitution occurred, and the WRDE_NOCMD flag  told  us  to  consider  this  an error*/
-			case WRDE_NOSPACE:
-				/* Out of memory*/
-			case WRDE_SYNTAX:
-				/* Shell syntax error, such as unbalanced parentheses or unmatched quotes*/
+			case WRDE_BADCHAR: /* Illegal occurrence of newline or one of |, &, ;, <, >, (, ), {, } */
+			case WRDE_BADVAL:  /* An undefined shell variable was referenced, and the WRDE_UNDEF flag told us to consider this an error */
+			case WRDE_CMDSUB:  /* Command substitution occurred, and the WRDE_NOCMD flag told us to consider this an error */
+			case WRDE_NOSPACE: /* ENOMEM */
+			case WRDE_SYNTAX:  /* Shell syntax error, such as unbalanced parentheses or unmatched quotes */
 				break;
 		}
 

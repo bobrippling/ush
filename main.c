@@ -6,6 +6,7 @@
 #include <termios.h>
 #include <stdlib.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 #include "util.h"
 #include "proc.h"
@@ -21,7 +22,7 @@
 jmp_buf allocerr;
 volatile int got_sigchld = 0;
 struct task *tasks = NULL;
-int dumb_term = 0;
+int interactive = 0;
 
 int lewp()
 {
@@ -32,11 +33,12 @@ int lewp()
 		int eof;
 
 		prog = ureadline(&eof);
-		if(eof)
-			/* FIXME: kill children - "jobs are running... better go and catch them!" */
+		if(eof){
+			/* jobs are running... better go and catch them! */
 			break;
-		else if(!prog)
+		}else if(!prog){
 			continue;
+		}
 
 		t = task_new(prog);
 		t->next = tasks;
@@ -78,6 +80,7 @@ void sigh(int sig)
 int main(int argc, const char **argv)
 {
 	int ret, i, login = argv[0][0] == '-';
+	char *input = NULL;
 
 	signal(SIGCHLD, sigh);
 
@@ -89,15 +92,32 @@ int main(int argc, const char **argv)
 #define ARG(x) !strcmp(argv[i], "-" x)
 
 	for(i = 1; i < argc; i++)
-		if(ARG("l"))
+		if(ARG("l")){
 			login = 1;
-		else{
-			fprintf(stderr, "Usage: %s [-l]\n"
+		}else if(ARG("c")){
+			if(++i == argc)
+				goto usage;
+			input = ustrdup_argv(argv + i, " ");
+			break;
+		}else{
+usage:
+			fprintf(stderr, "Usage: %s [-l] [-c cmd]\n"
 					            "  -l: login shell\n", *argv);
 			return 1;
 		}
 
-	if(term_init()){
+	if(input){
+		if(login)
+			login = 0;
+
+		interactive = 0;
+
+		input_set(input);
+	}else if(!isatty(0)){
+		interactive = 0;
+	}
+
+	if(interactive && term_init()){
 		fprintf(stderr, "%s: aborting - couldn't initialise terminal\n",
 				*argv);
 		return 1;
@@ -113,7 +133,8 @@ int main(int argc, const char **argv)
 	ret = lewp();
 
 	path_term();
-	term_term();
+	if(interactive)
+		term_term();
 
 	return ret;
 }

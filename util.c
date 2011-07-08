@@ -71,6 +71,26 @@ char *ustrndup(const char *s, size_t n)
 	return p;
 }
 
+char *ustrdup_argv(const char **argv, const char *join)
+{
+	int len = 1, join_len = strlen(join);
+	const char **iter;
+	char *ret;
+
+	for(iter = argv; *iter; iter++)
+		len += strlen(*iter) + join_len;
+
+	ret = umalloc(len);
+	*ret = '\0';
+
+	for(iter = argv; *iter; iter++){
+		strcat(ret, *iter);
+		strcat(ret, join);
+	}
+
+	return ret;
+}
+
 char *ustrdup_argvp(char ***argvpp)
 {
 	char ***piter, **iter, *ret;

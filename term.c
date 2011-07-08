@@ -18,10 +18,10 @@ int term_init(void)
 	int pgid = getpgrp();
 
 	if(tcgetattr(STDIN_FILENO, &attr_orig)){
-		extern int dumb_term;
+		extern int interactive;
 		perror("tcgetattr()");
 		fputs("job control disabled\n", stderr);
-		dumb_term = 1;
+		interactive = 0;
 		return 0;
 	}
 

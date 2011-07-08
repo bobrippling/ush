@@ -22,7 +22,7 @@
 # undef JOB_DEBUG
 #endif
 
-extern int dumb_term;
+extern int interactive;
 
 /** create a struct proc for each argv */
 struct job *job_new(char ***argvp, int jid, struct redir *redir)
@@ -93,7 +93,7 @@ int job_start(struct job *j)
 		}else
 			fd = redir_iter->fd_out;
 
-		fprintf(stderr, "job_start(): REDIR(%d, %d)\n", fd, redir_iter->fd_in);
+		fprintf(stderr, "job_start(): REDIR(%d [%s], %d)\n", fd, redir_iter->fname, redir_iter->fd_in);
 		REDIR(fd, redir_iter->fd_in);
 	}
 
@@ -128,11 +128,12 @@ int job_start(struct job *j)
 				goto bail;
 
 			default:
-				if(!dumb_term){
+				if(interactive){
 					if(!j->gid)
 						j->gid = p->pid;
 					setpgid(p->pid, j->gid);
 				}
+				p->state = PROC_RUN;
 		}
 	}
 
@@ -143,6 +144,7 @@ int job_start(struct job *j)
 
 	return 0;
 bail:
+	fprintf(stderr, "warning: error starting job: %s\n", strerror(errno));
 	for(; p; p = p->next)
 		p->state = PROC_FIN;
 	job_close_fds(j, NULL);
@@ -167,18 +169,19 @@ int job_wait(struct job *j, int async)
 	int wait_status = 0, proc_still_running = 0;
 	struct proc *p;
 	pid_t pid;
-#define JOB_WAIT_CHANGE_GROUP
+	pid_t wait_on_me;
 
+#define JOB_WAIT_CHANGE_GROUP
 #ifdef JOB_WAIT_CHANGE_GROUP
 	pid_t orig_pgid;
 	int save;
 
-	if(!dumb_term)
+	if(interactive)
 		orig_pgid = getpgid(STDIN_FILENO);
 #endif
 
 rewait:
-	if(!dumb_term){
+	if(interactive){
 		if(j->tconf_got)
 			term_attr_set(&j->tconf);
 		else
@@ -190,10 +193,21 @@ rewait:
 #endif
 	}
 
-	pid = waitpid(-j->gid, &wait_status,
+	if(j->gid){
+		wait_on_me = -j->gid;
+	}else{
+		struct proc *p = job_first_proc(j);
+
+		if(p)
+			wait_on_me = p->pid;
+		else
+			wait_on_me = j->proc->pid; /* guess */
+	}
+
+	pid = waitpid(wait_on_me, &wait_status,
 			WUNTRACED | WCONTINUED | (async ? WNOHANG : 0));
 
-	if(!dumb_term){
+	if(interactive){
 #ifdef JOB_WAIT_CHANGE_GROUP
 		save = errno;
 		term_give_to(orig_pgid);
@@ -210,9 +224,11 @@ rewait:
 	if(pid == -1){
 		if(errno == EINTR)
 			goto rewait;
-		fprintf(stderr, "waitpid(%d [job %d: \"%s\"], async = %s): %s\n",
-				-j->gid, j->job_id, j->cmd, async ? "true" : "false",
-				strerror(errno));
+		else
+			fprintf(stderr, "waitpid(%d [job %d: \"%s\"], async = %s): %s\n",
+					-j->gid, j->job_id, j->cmd, async ? "true" : "false",
+					strerror(errno));
+
 		return 1;
 	}else if(pid == 0 && async)
 		return 0;
@@ -249,6 +265,15 @@ rewait:
 	if(!proc_still_running)
 		j->state = JOB_COMPLETE;
 	return 0;
+}
+
+struct proc *job_first_proc(struct job *j)
+{
+	struct proc *p;
+	for(p = j->proc; p; p = p->next)
+		if(p->state == PROC_RUN || p->state == PROC_STOP)
+			return p;
+	return NULL;
 }
 
 void job_free(struct job *j)

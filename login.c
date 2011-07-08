@@ -3,10 +3,10 @@
 
 int main(int argc, char **argv)
 {
-	if(argc > 1)
-		fprintf(stderr, "%s: ignoring args\n", *argv);
+	(void)argc;
 
-	execl("ush", "-ush", NULL);
+	argv[0] = "-ush";
+	execv("ush", argv);
 
 	perror("exec ush");
 	return 1;

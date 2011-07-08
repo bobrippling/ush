@@ -23,6 +23,8 @@
 static char *prompt_and_line(void);
 static char *uread_and_comp(void);
 
+static char *cmd = NULL;
+static int cmd_used = 0;
 
 struct parsed *ureadline(int *eof)
 {
@@ -41,24 +43,31 @@ struct parsed *ureadline(int *eof)
 	if(pos)
 		*pos = '\0';
 
-	pos = strchr(buffer, '~');
-	if(pos){
-		/* TODO: replace with $HOME */
-	}
-
-	if(*buffer == '\0')
+	if(*buffer == '\0'){
 		ret = NULL;
-	else
+	}else{
 		ret = parse(buffer);
+		glob_expand(ret);
+	}
 	free(buffer);
 
-	glob_expand(ret);
 	return ret;
 }
 
 static char *prompt_and_line()
 {
 	char *buffer;
+
+	if(cmd_used){
+		return NULL;
+	}else if(cmd){
+		char *ret;
+		ret = cmd;
+		cmd = NULL;
+		cmd_used = 1;
+		return ret;
+	}
+
 retry:
 	if(!(buffer = uread_and_comp())){
 		if(ferror(stdin)){
@@ -169,4 +178,9 @@ reprompt:
 		}
 	}while(1);
 #endif
+}
+
+void input_set(const char *s)
+{
+	cmd = ustrdup(s);
 }

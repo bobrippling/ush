@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <limits.h>
+#include <alloca.h>
 
 #include "util.h"
 #include "path.h"
