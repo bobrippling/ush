@@ -1,6 +1,8 @@
 CFLAGS  = -Wall -Wextra -pedantic -g
 SHELLS  = /etc/shells
-BINPATH = ${PREFIX}/bin/ush
+BINPATH = ${PREFIX}bin/ush
+
+all: ush login
 
 ush: job.o main.o proc.o util.o readline.o term.o parse.o \
 		builtin.o task.o path.o complete.o esc.o glob.o
@@ -9,7 +11,7 @@ ush: job.o main.o proc.o util.o readline.o term.o parse.o \
 clean:
 	rm -f *.o ush
 
-install:
+install: ush
 	install -m 555 ush ${BINPATH}
 	grep -F ${BINPATH} ${SHELLS} || echo ${BINPATH} >> ${SHELLS}
 
@@ -17,7 +19,7 @@ uninstall:
 	rm -f ${BINPATH}
 	@grep -F ${BINPATH} ${SHELLS} > /dev/null && echo :: you need to remove ush from ${SHELLS}
 
-.PHONY: clean install uninstall
+.PHONY: all clean install uninstall
 
 builtin.o: builtin.c proc.h job.h task.h builtin.h term.h esc.h
 complete.o: complete.c util.h complete.h
