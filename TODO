@@ -1,4 +1,4 @@
-fix background tasks not being rm'd
+nohup background tasks on exit
 
 readline: tab completion
 parse:    $varname, *, etc
@@ -8,3 +8,10 @@ history
 cd, fg, rehash
 
 parsing: `echo hi | gr<TAB>` should complete to grep
+
+copy zsh - open stdin as terminal, instead of stdout?
+(poormanseperation.sh)
+
+restructure to be more focused on the syntax tree/parser
+
+There are running jobs.  Why don't you go chase them?
