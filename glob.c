@@ -12,28 +12,31 @@
 void glob_expand_argv(char ***pargv)
 {
 	char **argv;
-	int len;
-	int i;
+	unsigned int i;
+	unsigned int len;
 
 	argv = *pargv;
 	len = null_array_len(argv);
 
 	for(i = 0; i < len; i++){
 		wordexp_t exp;
-		int ret = wordexp(argv[i], &exp, WRDE_NOCMD /*FIXME*/);
+		int ret;
+
+		ret = wordexp(argv[i], &exp, WRDE_NOCMD /* FIXME */);
 
 		switch(ret){
 			case 0:
 			if(exp.we_wordc){
-				int newsize;
 				unsigned int j;
 
-				newsize = len + exp.we_wordc + 1;
-				argv = urealloc(argv, newsize * sizeof(*argv));
-
-				memmove(&argv[i + exp.we_wordc - 1], &argv[i], (exp.we_wordc - 1) * sizeof(*argv));
-
 				len += exp.we_wordc - 1;
+				argv = urealloc(argv, (len+1) * sizeof(*argv));
+
+				/*
+				 * move from argv[i + 1] to argv[i + 1 + exp.we_wordc - 1]
+				 * length is i because that's how far up it needs shifting?
+				 */
+				memmove(&argv[i + exp.we_wordc], &argv[i + 1], sizeof(*argv));
 
 				for(j = 0; j < exp.we_wordc; j++)
 					argv[i + j] = ustrdup(exp.we_wordv[j]);
