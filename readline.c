@@ -27,7 +27,7 @@ static char *uread_and_comp(void);
 struct parsed *ureadline(int *eof)
 {
 	struct parsed *ret;
-	char *buffer, *nl;
+	char *buffer, *pos;
 
 	*eof = 0;
 
@@ -37,9 +37,14 @@ struct parsed *ureadline(int *eof)
 		return NULL;
 	}
 
-	nl = strchr(buffer, '\n');
-	if(nl)
-		*nl = '\0';
+	pos = strchr(buffer, '\n');
+	if(pos)
+		*pos = '\0';
+
+	pos = strchr(buffer, '~');
+	if(pos){
+		/* TODO: replace with $HOME */
+	}
 
 	if(*buffer == '\0')
 		ret = NULL;
@@ -165,4 +170,3 @@ reprompt:
 	}while(1);
 #endif
 }
-

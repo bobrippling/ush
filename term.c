@@ -3,6 +3,8 @@
 #include <termios.h>
 #include <signal.h>
 #include <string.h>
+#include <errno.h>
+#include <sys/types.h>
 
 #include "term.h"
 #include "config.h"
@@ -54,10 +56,7 @@ int term_term(void)
 {
 	term_raw(0);
 
-	if(tcsetattr(STDIN_FILENO, TCSAFLUSH, &attr_orig)){
-		perror("tcsetattr()");
-		return 1;
-	}
+	term_attr_set(&attr_orig);
 
 	return 0;
 }
@@ -72,8 +71,13 @@ void term_attr_get(struct termios *t)
 
 void term_attr_set(struct termios *t)
 {
-	if(tcsetattr(STDIN_FILENO, TCSAFLUSH, t))
+	int n = 0;
+start:
+	if(tcsetattr(STDIN_FILENO, TCSAFLUSH, t)){
+		if(errno == EINTR && n++ < 10)
+			goto start;
 		perror("tcsetattr()");
+	}
 }
 
 void term_attr_orig(void)
