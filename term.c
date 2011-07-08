@@ -16,8 +16,11 @@ int term_init(void)
 	int pgid = getpgrp();
 
 	if(tcgetattr(STDIN_FILENO, &attr_orig)){
+		extern int dumb_term;
 		perror("tcgetattr()");
-		return 1;
+		fputs("job control disabled\n", stderr);
+		dumb_term = 1;
+		return 0;
 	}
 
 	memcpy(&attr_ush, &attr_orig, sizeof attr_ush);

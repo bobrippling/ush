@@ -22,6 +22,8 @@
 # undef JOB_DEBUG
 #endif
 
+extern int dumb_term;
+
 /** create a struct proc for each argv */
 struct job *job_new(char ***argvp, int jid, struct redir *redir)
 {
@@ -126,9 +128,11 @@ int job_start(struct job *j)
 				goto bail;
 
 			default:
-				if(!j->gid)
-					j->gid = p->pid;
-				setpgid(p->pid, j->gid);
+				if(!dumb_term){
+					if(!j->gid)
+						j->gid = p->pid;
+					setpgid(p->pid, j->gid);
+				}
 		}
 	}
 
@@ -166,35 +170,41 @@ int job_wait(struct job *j, int async)
 #define JOB_WAIT_CHANGE_GROUP
 
 #ifdef JOB_WAIT_CHANGE_GROUP
-	const pid_t orig_pgid = getpgid(STDIN_FILENO);
+	pid_t orig_pgid;
 	int save;
+
+	if(!dumb_term)
+		orig_pgid = getpgid(STDIN_FILENO);
 #endif
 
 rewait:
-
-	if(j->tconf_got)
-		term_attr_set(&j->tconf);
-	else
-		term_attr_orig();
+	if(!dumb_term){
+		if(j->tconf_got)
+			term_attr_set(&j->tconf);
+		else
+			term_attr_orig();
 
 #ifdef JOB_WAIT_CHANGE_GROUP
-	term_give_to(j->gid);
-	/*setpgid(getpid(), j->gid);*/
+		term_give_to(j->gid);
+		/*setpgid(getpid(), j->gid);*/
 #endif
+	}
 
 	pid = waitpid(-j->gid, &wait_status,
 			WUNTRACED | WCONTINUED | (async ? WNOHANG : 0));
 
+	if(!dumb_term){
 #ifdef JOB_WAIT_CHANGE_GROUP
-	save = errno;
-	term_give_to(orig_pgid);
-	/*setpgid(getpid(), orig_pgid);*/
-	errno = save;
+		save = errno;
+		term_give_to(orig_pgid);
+		/*setpgid(getpid(), orig_pgid);*/
+		errno = save;
 #endif
 
-	term_attr_get(&j->tconf);
-	j->tconf_got = 1;
-	term_attr_ush();
+		term_attr_get(&j->tconf);
+		j->tconf_got = 1;
+		term_attr_ush();
+	}
 
 
 	if(pid == -1){

@@ -69,15 +69,12 @@ static int complete_filter(const struct dirent *ent)
 
 static void complete_best_match(char **ents, int nmatches, unsigned int *bestlen)
 {
-	int minlen = INT_MAX, min = -1, i;
+	int minlen = INT_MAX, i;
 
 	for(i = 0; i < nmatches; i++){
 		const int len = strlen(ents[i]);
-
-		if(len < minlen){
+		if(len < minlen)
 			minlen = len;
-			min = i;
-		}
 	}
 
 	for(i = 0; i < minlen; i++){

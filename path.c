@@ -43,6 +43,8 @@ int path_count()
 	return nexes;
 }
 
+#define OLD
+
 void path_init()
 {
 	const char *path = getenv("PATH");
@@ -67,10 +69,15 @@ void path_init()
 #ifdef ONLY_ONCE
 				if(!path_has(ent->d_name)){
 #endif
-					char *path = ustrdup_printf("%s/%s", iter, ent->d_name);
 					struct stat st;
+#ifdef OLD
+					char *path = ustrdup_printf("%s/%s", iter, ent->d_name);
 
-					if(!stat(path, &st) && can_exe(&st)){
+					if(!stat(path, &st) && can_exe(&st))
+#else
+					if(!fstatat(dirno(d))) /* TODO: fstatat and friends */
+#endif
+					{
 						struct exe *new;
 
 						*pexe = new = umalloc(sizeof *new);

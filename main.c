@@ -20,6 +20,7 @@
 jmp_buf allocerr;
 volatile int got_sigchld = 0;
 struct task *tasks = NULL;
+int dumb_term = 0;
 
 int lewp()
 {
