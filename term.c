@@ -9,6 +9,8 @@
 #include "term.h"
 #include "config.h"
 
+#define TERM_FILENO STDIN_FILENO
+
 struct termios attr_orig, attr_ush;
 
 void term_raw(int);
@@ -17,7 +19,7 @@ int term_init(void)
 {
 	int pgid = getpgrp();
 
-	if(tcgetattr(STDIN_FILENO, &attr_orig)){
+	if(tcgetattr(TERM_FILENO, &attr_orig)){
 		extern int interactive;
 		perror("tcgetattr()");
 		fputs("job control disabled\n", stderr);
@@ -27,7 +29,7 @@ int term_init(void)
 
 	memcpy(&attr_ush, &attr_orig, sizeof attr_ush);
 
-	while(tcgetpgrp(STDIN_FILENO) != (pgid = getpgrp()))
+	while(tcgetpgrp(TERM_FILENO) != (pgid = getpgrp()))
 		kill(-pgid, SIGTTIN);
 
 	/* foreground! */
@@ -45,7 +47,7 @@ int term_init(void)
 		return 1;
 	}
 
-	tcsetpgrp(STDIN_FILENO, pgid);
+	tcsetpgrp(TERM_FILENO, pgid);
 
 	term_raw(1);
 
@@ -63,7 +65,7 @@ int term_term(void)
 
 void term_attr_get(struct termios *t)
 {
-	if(tcgetattr(STDIN_FILENO, t)){
+	if(tcgetattr(TERM_FILENO, t)){
 		perror("tcgetattr()");
 		memset(t, 0, sizeof *t);
 	}
@@ -73,7 +75,7 @@ void term_attr_set(struct termios *t)
 {
 	int n = 0;
 start:
-	if(tcsetattr(STDIN_FILENO, TCSAFLUSH, t)){
+	if(tcsetattr(TERM_FILENO, TCSAFLUSH, t)){
 		if(errno == EINTR && n++ < 10)
 			goto start;
 		perror("tcsetattr()");
@@ -92,13 +94,12 @@ void term_attr_ush(void)
 
 void term_give_to(pid_t gid)
 {
-	if(tcsetpgrp(STDIN_FILENO, gid))
+	if(tcsetpgrp(TERM_FILENO, gid))
 		perror("term_give_to()");
 }
 
 void term_raw(int on)
 {
-#ifndef READ_SIMPLE
 	if(on){
 		attr_ush.c_cc[VMIN]  = sizeof(char);
 		attr_ush.c_lflag    &= ~(ICANON | ECHO);
@@ -107,5 +108,4 @@ void term_raw(int on)
 		attr_ush.c_lflag    |= ICANON | ECHO;
 	}
 	term_attr_ush();
-#endif
 }

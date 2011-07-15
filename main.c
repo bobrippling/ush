@@ -22,7 +22,7 @@
 jmp_buf allocerr;
 volatile int got_sigchld = 0;
 struct task *tasks = NULL;
-int interactive = 0;
+int interactive = 1;
 
 int lewp()
 {
@@ -116,6 +116,8 @@ usage:
 	}else if(!isatty(0)){
 		interactive = 0;
 	}
+
+	setbuf(stdout, NULL);
 
 	if(interactive && term_init()){
 		fprintf(stderr, "%s: aborting - couldn't initialise terminal\n",
