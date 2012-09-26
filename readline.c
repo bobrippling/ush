@@ -113,15 +113,19 @@ reprompt:
 	do{
 		int c = getchar();
 
-		if(c == CTRL_AND('D')){
-			if(index == 0){
-				free(buffer);
-				return NULL;
-			}else
-				c = '\t';
-		}
-
+redo:
 		switch(c){
+			case -1:
+			case CTRL_AND('D'):
+				if(index == 0){
+					free(buffer);
+					return NULL;
+				}else{
+					c = '\t';
+					goto redo;
+				}
+				break;
+
 			case '\b':   /* ^H aka CTRL_AND('H') */
 			case '\177': /* ^? */
 				if(index > 0){

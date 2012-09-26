@@ -15,8 +15,10 @@ static const struct { const char *s; int rlim; } lims[] = {
 /*[LIMIT_MEMORYUSE]    = { "memoryuse",     RLIMIT_ },*/
 	[LIMIT_VMEMORYUSE]   = { "vmemoryuse",    RLIMIT_AS },
 	[LIMIT_DESCRIPTORS]  = { "descriptors",   RLIMIT_NOFILE },
+#ifdef RLIMIT_MEMLOCK
 	[LIMIT_MEMORYLOCKED] = { "memorylocked",  RLIMIT_MEMLOCK },
 	[LIMIT_MAXPROC]      = { "maxproc",       RLIMIT_NPROC },
+#endif
 	[LIMIT_LAST]         = { NULL,            -1 }
 };
 

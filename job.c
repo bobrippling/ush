@@ -8,6 +8,7 @@
 #include <termios.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <signal.h>
 
 #include "util.h"
 #include "proc.h"
