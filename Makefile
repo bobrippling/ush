@@ -1,15 +1,19 @@
-CFLAGS  = -Wall -Wextra -pedantic -g -std=c99 -D_POSIX_SOURCE -D_BSD_SOURCE
+CFLAGS  = -Wall -Wextra -pedantic -g -std=c99
 SHELLS  = /etc/shells
 BINPATH = ${PREFIX}bin/ush
 
+include config.mk
+
+OBJ = job.o main.o proc.o util.o readline.o term.o parse.o \
+			builtin.o task.o path.o complete.o esc.o glob.o limit.o
+
 all: ush login
 
-ush: job.o main.o proc.o util.o readline.o term.o parse.o \
-		builtin.o task.o path.o complete.o esc.o glob.o limit.o
-	${CC} ${CFLAGS} -o $@ $^
+ush: ${OBJ}
+	${CC} ${CFLAGS} -o $@ ${OBJ}
 
 login: login.o
-	${CC} ${CFLAGS} -o $@ $^
+	${CC} ${CFLAGS} -o $@ login.o
 
 clean:
 	rm -f *.o ush login

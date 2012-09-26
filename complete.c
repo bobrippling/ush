@@ -5,7 +5,9 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <limits.h>
+#ifdef HAVE_ALLOCA
 #include <alloca.h>
+#endif
 
 #include "util.h"
 #include "path.h"

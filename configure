@@ -1,0 +1,14 @@
+#!/bin/sh
+
+exec > config.mk
+
+printf 'CFLAGS += '
+
+case "$(uname -s)" in
+	Linux)
+		echo -DHAVE_ALLOCA -D_BSD_SOURCE
+		;;
+	FreeBSD)
+		echo
+		;;
+esac
