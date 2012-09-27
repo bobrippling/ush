@@ -8,7 +8,8 @@ case "$(uname -s)" in
 	Linux)
 		echo -DHAVE_ALLOCA -D_BSD_SOURCE
 		;;
-	FreeBSD)
+	*)
+		# FreeBSD, Darwin
 		echo
 		;;
 esac
