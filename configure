@@ -6,7 +6,7 @@ printf 'CFLAGS += '
 
 case "$(uname -s)" in
 	Linux)
-		echo -DHAVE_ALLOCA -D_BSD_SOURCE
+		echo -DHAVE_ALLOCA -D_BSD_SOURCE -D_POSIX_C_SOURCE
 		;;
 	*)
 		# FreeBSD, Darwin
