@@ -85,14 +85,15 @@ int job_start(struct job *j)
 		int fd;
 
 		if(redir_iter->fname){
-			fd = open(redir_iter->fname, O_WRONLY | O_CREAT | O_TRUNC); /* FIXME: only out for now */
+			fd = open(redir_iter->fname, O_WRONLY | O_CREAT | O_TRUNC); /* FIXME: only out for now - need "<" and ">>" */
 			if(fd == -1){
 				fprintf(stderr, "ush: open %s: %s\n", redir_iter->fname, strerror(errno));
 				/* FIXME: close all other fds */
 				return 1;
 			}
-		}else
+		}else{
 			fd = redir_iter->fd_out;
+		}
 
 		fprintf(stderr, "job_start(): REDIR(%d [%s], %d)\n", fd, redir_iter->fname, redir_iter->fd_in);
 		REDIR(fd, redir_iter->fd_in);
@@ -108,8 +109,9 @@ int job_start(struct job *j)
 			}
 			p->out = pipey[1];
 			p->next->in = pipey[0];
-		}else
+		}else{
 			p->out = STDOUT_FILENO;
+		}
 
 		/* TODO: cd, fg, rehash */
 
