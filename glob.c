@@ -30,7 +30,7 @@ void glob_expand_argv(char ***pargv)
 	len = null_array_len(argv);
 
 	for(i = 0; i < len; i++){
-		wordexp_t exp;
+		wordexp_t exp = { 0 };
 		int ret;
 
 		ret = ush_wordexp(argv[i], &exp, 0);
