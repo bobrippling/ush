@@ -1,4 +1,6 @@
 *.o
 ush
+ush.static
 login
+login.static
 config.mk

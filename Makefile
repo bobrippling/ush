@@ -1,4 +1,6 @@
 CFLAGS  = -Wall -Wextra -pedantic -g -std=c99
+LDFLAGS =
+LDFLAGS_STATIC = -static
 SHELLS  = /etc/shells
 BINPATH = ${PREFIX}bin/ush
 
@@ -9,11 +11,19 @@ OBJ = job.o main.o proc.o util.o readline.o term.o parse.o \
 
 all: ush login
 
+static: ush.static login.static
+
 ush: ${OBJ}
-	${CC} ${CFLAGS} -o $@ ${OBJ}
+	${CC} -o $@ ${OBJ} ${LDFLAGS}
 
 login: login.o
-	${CC} ${CFLAGS} -o $@ login.o
+	${CC} -o $@ login.o ${LDFLAGS}
+
+ush.static: ${OBJ}
+	${CC} -o $@ ${OBJ} ${LDFLAGS_STATIC}
+
+login.static: login.o
+	${CC} -o $@ login.o ${LDFLAGS_STATIC}
 
 clean:
 	rm -f *.o ush login
@@ -26,7 +36,7 @@ uninstall:
 	rm -f ${BINPATH}
 	@grep -F ${BINPATH} ${SHELLS} > /dev/null && echo :: you need to remove ush from ${SHELLS}
 
-.PHONY: all clean install uninstall
+.PHONY: all static clean install uninstall
 
 builtin.o: builtin.c proc.h job.h parse.h task.h builtin.h term.h esc.h \
  path.h limit.h
